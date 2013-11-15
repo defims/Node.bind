@@ -1,0 +1,161 @@
+<!doctype html>
+<head>
+    <script src="../Node.bind.js"></script>
+</head>
+<body>
+<div id='node'>3</div>
+<script>
+var node    = document.getElementById('node');
+var data = {
+    path : {
+        to : {
+            value : 'content'
+        }
+    }
+};
+//Node(node, 'textContent').bind(data, 'content');
+//Node(node).bind('textContent', data, 'content');
+//data.path.to.value    = 'hi';
+NodeBind(node).bind(data);
+</script>
+<script>
+/*
+node(node).attribute        = object(object).attribute;
+object(object).attribute    = node(node).attribute;
+node(node)[attribute]       = object(object)[attribute];
+object(object)[attribute]   = node(node)[attribute];
+*/
+
+/*
+Node(node,attribute).bind(object,attribute)
+*
+
+;(function(){
+
+    function attr(node, attr){
+        this.node       = node;
+        this.attribute  = attr;
+    };
+
+    attr.prototype.bind = function(obj, objAttr){
+        var node                    = this.node,
+            nodeAttr                = this.attribute,
+            nodeType                = node.nodeType,
+            defineProperty          = Object.defineProperty,
+            _nodeVal                = node[nodeAttr],
+            _objVal                 = obj[objAttr];
+        //set node and nodeAttr
+        //if(nodeType == 1 && nodeAttr  == 'textContent'){
+        //    var childNodes  = node.childNodes,
+        //        len         = childNodes.length,
+        //        i,childNode;
+
+        //    if(len){
+        //        for(i=0; i<childNodes.length; i++){
+        //            childNode   = childNodes[i];
+        //            if(childNode.nodeType == 3){
+        //                node        = childNode;
+        //                break;  
+        //            }
+        //        }
+        //    }else{
+        //        var childNode   = document.createTextNode();
+        //        node.appendChild(childNode);
+        //        node    = childNode;
+        //    }
+        //    nodeAttr    = 'nodeValue';
+        //};
+
+        var _nodeGetterSetter   = Object.getOwnPropertyDescriptor(node, nodeAttr),
+            _objGetterSetter    = Object.getOwnPropertyDescriptor(obj, objAttr);
+        console.log(_nodeGetterSetter);
+        _nodeGetterSetter.value = 1;
+        console.log(_nodeGetterSetter,node);
+        //_nodeGetterSetter.value='hi88';
+        //console.log(_nodeGetterSetter, _objGetterSetter);
+        //node[nodeAttr] getter setter  
+
+        //var _copyNode = {}
+        //defineProperty(_copyNode, nodeAttr, _nodeGetterSetter);
+        //defineProperty(node, nodeAttr, {
+        //    get: function(){
+        //        return _nodeGetterSetter.value;
+        //    },
+        //    set: function(value){
+        //        console.log('node setter')
+        //        //_objGetterSetter.value    = value;
+        //        _nodeGetterSetter.value = value;
+        //        //_copyNode[nodeAttr]   = value;
+        //    }
+        //});
+        //obj[objAttr] getter setter
+        defineProperty(obj, objAttr, {
+            get:function(){
+                return _objGetterSetter.value;
+            },
+            set:function(value){
+                _objGetterSetter.value  = value;
+                node[nodeAttr]  = value;
+                //_nodeGetterSetter.value   = value;
+            }
+        });
+
+        //init node
+        node[nodeAttr]  = obj[objAttr];
+        //console.log(node,nodeAttr,node[nodeAttr],obj,objAttr,obj[objAttr]);
+        //console.log(Object.getOwnPropertyDescriptor(node, nodeAttr));
+        //console.log(Object.getOwnPropertyDescriptor(_copyNode, nodeAttr));
+
+    };
+
+    function Node(node, attribute){
+        return new attr(node, attribute);
+    };
+
+    window.Node = Node;
+})();
+*/
+/*
+var observer = new PathObserver(obj, 'foo.bar.baz', function(newValue, oldValue) { // respond to obj.foo.bar.baz having changed value. });
+var observer = new ArrayObserver(arr, function(splices) {
+  // respond to changes to the elements of arr.
+  splices.forEach(function(splice) {
+    splice.index; // index position that the change occurred.
+    splice.removed; // an array of values representing the sequence of elements which were removed
+    splice.addedCount; // the number of elements which were inserted.
+  });
+});
+var observer = new ObjectObserver(obj, function(added, removed, changed, getOldValueFn) {
+  // respond to changes to the obj.
+  Object.keys(added).forEach(function(property) {
+    property; // a property which has been been added to obj
+    added[property]; // its value
+  });
+  Object.keys(removed).forEach(function(property) {
+    property; // a property which has been been removed from obj
+    getOldValueFn(property); // its old value
+  });
+  Object.keys(changed).forEach(function(property) {
+    property; // a property on obj which has changed value.
+    changed[property]; // its value
+    getOldValueFn(property); // its old value
+  });
+});
+*/
+/*
+if (!Array.prototype.forEach) {
+    Array.prototype.forEach = function (fn, scope) {
+        'use strict';
+        var i, len;
+        for (i = 0, len = this.length; i < len; ++i) {
+            if (i in this) {
+                fn.call(scope, this[i], i, this);
+            }
+        }
+    };
+}
+*/
+
+</script>
+</body>
+</html>
