@@ -3,20 +3,33 @@
     <script src="../Node.bind.js"></script>
 </head>
 <body>
-<div id='node'>3</div>
+<div id='elementObject'></div>
+<div id='elementArray'></div>
+<div id='elementBoolean'></div>
+<div id='elementNumber'></div>
 <script>
-var node    = document.getElementById('node');
-var data = {
-    path : {
-        to : {
-            value : 'content'
+var data ={
+    obj     : {
+        path : {
+            to : {
+                value : 'content'
+            }
         }
-    }
+    },
+    arr     : [1,2,3,4],
+    bool    : true,
+    num     : 90
 };
 //Node(node, 'textContent').bind(data, 'content');
 //Node(node).bind('textContent', data, 'content');
 //data.path.to.value    = 'hi';
-NodeBind(node).bind(data);
+NodeBind(document.getElementById('elementObject')).bind(data, 'obj');
+NodeBind(document.getElementById('elementArray')).bind(data, 'arr');
+NodeBind(document.getElementById('elementBoolean')).bind(data, 'bool');
+NodeBind(document.getElementById('elementNumber')).bind(data, 'num');
+
+data.bool    = false;
+data.num     = 100;
 </script>
 <script>
 /*
