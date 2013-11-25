@@ -2,21 +2,21 @@
 
 ##Usage:
 
-when call Node(node).bind(targetName), if target type is Function,Array or Object , bind function will get the address of target, and detect changes of it. if target type is Number,String or Boolean, a copy of target will be translate. so type of bind function'argument is a string.
+* when call Node(node).bind(targetName), if target type is Function,Array or Object , bind function will get the address of target, and detect changes of it. if target type is Number,String or Boolean, a copy of target will be translate. so type of bind function'argument is a string.
 
     var node = document.getElementById('node');
     var data = [1,2,3];
     Node(node).bind('data');
 
-$i means the repeat index
+* $i means the repeat index
 
-###html:
+html:
 
     <div class='elementArray'>
         <div class="arrayChild">elementArray</div>
     </div>
 
-###js:
+js:
 
     var data ={
         arr     : [1,2,3,4]
@@ -27,7 +27,7 @@ $i means the repeat index
     data.arr.push(6);
     data.arr.push(9);
 
-###render:
+render:
 
     <div class="elementArray">
         <div class="arrayChild">1</div>
