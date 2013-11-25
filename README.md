@@ -1,5 +1,9 @@
 #Node.bind
 
+##How it works
+
+this library use [ArrayObserve polyfill](https://github.com/defims/Array.observe) for Array observe, and [defineproperty polyfill](https://github.com/defims/defineProperty.polyfill) for object observe.after we call NodeBind(node).bind(data), node.nodeBindData will be created, and node observer will be added.
+
 ##Usage:
 
 * when call Node(node).bind(targetName), if target type is Function,Array or Object , bind function will get the address of target, and detect changes of it. if target type is Number,String or Boolean, a copy of target will be translate. so type of bind function'argument is a string.
