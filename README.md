@@ -26,25 +26,25 @@ js:
 
 render:
 
-    <div class="elementArray">
+    <div class="elementArray"><!--nodeBindData: {childBinding:[], index: 1, instances: [], scope: ObservableArray}-->
         <div class="arrayChild">1</div>
     </div>
-    <div class="elementArray">
+    <div class="elementArray"><!--nodeBindData: {childBinding:[], index: 1, instances: [], scope: ObservableArray}-->
         <div class="arrayChild">2</div>
     </div>
-    <div class="elementArray">
+    <div class="elementArray"><!--nodeBindData: {childBinding:[], index: 1, instances: [], scope: ObservableArray}-->
         <div class="arrayChild">3</div>
     </div>
-    <div class="elementArray">
+    <div class="elementArray"><!--nodeBindData: {childBinding:[], index: 1, instances: [], scope: ObservableArray}-->
         <div class="arrayChild">4</div>
     </div>
-    <div class="elementArray">
+    <div class="elementArray"><!--nodeBindData: {childBinding:[], index: 1, instances: [], scope: ObservableArray}-->
         <div class="arrayChild">5</div>
     </div>
-    <div class="elementArray">
+    <div class="elementArray"><!--nodeBindData: {childBinding:[], index: 1, instances: [], scope: ObservableArray}-->
         <div class="arrayChild">6</div>
     </div>
-    <div class="elementArray">
+    <div class="elementArray"><!--nodeBindData: {childBinding:[], index: 1, instances: [], scope: ObservableArray}-->
         <div class="arrayChild">9</div>
     </div>
 
