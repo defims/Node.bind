@@ -181,21 +181,14 @@
     * ignore
 
 ##Usage:
-    because when call Node(node).bind(targetName), if target type is Function,Array or Object , bind function will get the address of target, and detect changes of it. if target type is Number,String or Boolean, a copy of target will be translate. so type of bind function'argument is a string.
-
-    var node = document.getElementById('node');
-    var data = [1,2,3];
-    Node(node).bind('data');
-* NOTATION.bind
-    * ignore
-
-##Usage:
 
 * when call Node(node).bind(targetName), if target type is Function,Array or Object , bind function will get the address of target, and detect changes of it. if target type is Number,String or Boolean, a copy of target will be translate. so type of bind function'argument is a string.
 
+
     var node = document.getElementById('node');
     var data = [1,2,3];
     Node(node).bind('data');
+
 
 * $i means the repeat index
 
