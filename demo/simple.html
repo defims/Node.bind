@@ -1,35 +1,66 @@
 <!doctype html>
 <head>
+    <script src="../../DefineProperty.polyfill/defineProperty.polyfill.js"></script>
+    <script src="../../Array.observe/Array.observe.js"></script>
     <script src="../Node.bind.js"></script>
 </head>
 <body>
-<div id='elementObject'></div>
-<div id='elementArray'></div>
+    <div id='elementObject'>
+        <div id="nestScope">
+            <div id="objectChild"></div>
+            <div id="objectChild2"></div>
+            <div id="objectChild3"></div>
+        </div>
+    </div>
+    <div class='elementArray'>
+        <div class="arrayChild">elementArray</div>
+    </div>
 <div id='elementBoolean'></div>
 <div id='elementNumber'></div>
 <script>
 var data ={
     obj     : {
-        path : {
-            to : {
+        path    : [{
+            to  : [{
                 value : 'content'
-            }
-        }
+            }]
+        }]
     },
     arr     : [1,2,3,4],
     bool    : true,
-    num     : 90
+    num     : 90,
+    handle  : function(){
+        //observe(target, callback);
+    }
 };
 //Node(node, 'textContent').bind(data, 'content');
 //Node(node).bind('textContent', data, 'content');
 //data.path.to.value    = 'hi';
-NodeBind(document.getElementById('elementObject')).bind(data, 'obj');
-NodeBind(document.getElementById('elementArray')).bind(data, 'arr');
-NodeBind(document.getElementById('elementBoolean')).bind(data, 'bool');
-NodeBind(document.getElementById('elementNumber')).bind(data, 'num');
+//NodeBind(document.getElementById('elementObject')).bind('data');
+//NodeBind(document.getElementById('nestScope')).bind('obj');
+//NodeBind(document.getElementById('objectChild')).bind('path[0].to[0].value');
+//NodeBind(document.getElementById('objectChild2')).bind('arr[0]');//#nestScope's nodeBindData hasn't arr[0],so search parentScope and find data.arr[0]
+//if Array item is bind before, after binding will replace it
+NodeBind(document.getElementsByClassName('elementArray')).bind('data.arr');
+NodeBind(document.getElementsByClassName('arrayChild')).bind('$i');/*$i will be replaced with the repeat index*/
 
-data.bool    = false;
-data.num     = 100;
+//NodeBind(document.getElementById('elementBoolean')).bind('data.bool');
+//NodeBind(document.getElementById('elementNumber')).bind('data.num');
+
+//data.bool   = false;
+//data.num    = 100;
+//data.arr[0] = 20;
+data.arr.push(5);
+data.arr.push(6);
+data.arr.push(9);
+data.arr.push({a: 3});
+//data.arr[4] = 5;
+console.log(data.arr)
+//data.arr.push(6);
+//data.arr.pop();
+//data.arr.push({"foo":"bar"})
+//data.arr.push({"foo":"bar"})
+//data.arr[2] = 4;
 </script>
 <script>
 /*

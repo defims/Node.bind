@@ -2,9 +2,11 @@
 
 ##Node Binding Rule:
 
+
+
 * ELEMENT.bind
     * Array:
-        * repeat to Array.length with a DOCUMENTFRAGMENT wraped this ELEMENT, set scope to each repeated ELEMENT.
+        * repeat this ELEMENT to Array.length, set scope to each repeated ELEMENT.
 
     * Object:
         * set scope to this ELEMENT.
@@ -188,8 +190,52 @@
     * ignore
 
 ##Usage:
-    because when call Node(node).bind(targetName), if target type is Function,Array or Object , bind function will get the address of target, and detect changes of it. if target type is Number,String or Boolean, a copy of target will be translate. so type of bind function'argument is a string.
+
+* when call Node(node).bind(targetName), if target type is Function,Array or Object , bind function will get the address of target, and detect changes of it. if target type is Number,String or Boolean, a copy of target will be translate. so type of bind function'argument is a string.
 
     var node = document.getElementById('node');
     var data = [1,2,3];
     Node(node).bind('data');
+
+* $i means the repeat index
+
+    * html:
+
+    <div class='elementArray'>
+        <div class="arrayChild">elementArray</div>
+    </div>
+
+    * js:
+
+    var data ={
+        arr     : [1,2,3,4]
+    };
+    NodeBind(document.getElementsByClassName('elementArray')).bind('data.arr');
+    NodeBind(document.getElementsByClassName('arrayChild')).bind('$i');
+    data.arr.push(5);
+    data.arr.push(6);
+    data.arr.push(9);
+
+    * render: 
+
+    <div class="elementArray">
+        <div class="arrayChild">1</div>
+    </div>
+    <div class="elementArray">
+        <div class="arrayChild">2</div>
+    </div>
+    <div class="elementArray">
+        <div class="arrayChild">3</div>
+    </div>
+    <div class="elementArray">
+        <div class="arrayChild">4</div>
+    </div>
+    <div class="elementArray">
+        <div class="arrayChild">5</div>
+    </div>
+    <div class="elementArray">
+        <div class="arrayChild">6</div>
+    </div>
+    <div class="elementArray">
+        <div class="arrayChild">9</div>
+    </div>
