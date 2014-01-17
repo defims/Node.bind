@@ -1,212 +1,273 @@
-//Node.bind
-//Node().bind()
-;(function(){
-    /*
-     * = isObject
-     */
-    function isObject(object){
-        return Object.prototype.toString.call(object) == "[object Object]"
-    }
-    /*
-     * = isArray
-     */
-    function isArray(object){
-        return Object.prototype.toString.call(object) == "[object Array]"
-    }
-    /*
-     * =Node
-     * @param node string *
-     */
-//    var num         = 0,
-//        bindings    = {};
+(function(document, window, undefined){
+/*
+ * =Item
+ * */
+function Item(item){
+    var self = this;
+    self.origin = item;//$index
+}
+var ItemPrototype   = Item.prototype;
+/*
+ * =Item.prototype.get
+ * @about   get value from node for example: $index + node --> 0
+ * */
+ItemPrototype.get   = function(node){
+}
+/*
+ * =Path
+ * */
+function Path(path){
+    var self    = this;
+    self.origin = path;//"$index.foo.bar"
+    self.parsed = self.parse(path);//[Item, "foo", "bar"]
+};
+var PathPrototype   = Item.prototype;
+/*
+ * =Path.prototype.get
+ * @about   path.getObjectProperty then return object[property] for example: scope + parsed:[Item, "foo", "bar"] --> scope[0].foo.bar --> "value"
+ * */
+PathPrototype.get   = function(node, scope){
+}
+/*
+ * =Path.prototype.set
+ * @about   set origin = path --> path.parse(path) --> bind path
+ * */
+PathPrototype.set   = function(path){
 
-    function Node(nodes){
-        return {
-            bind : function(dataPath){
-                if(!nodes || !dataPath) return;
-                if(!nodes.length){
-                    nodes = [nodes];
-                }
-                for(var i = 0,len = nodes.length; i<len; i++){
-                    //forEach node
-                    var node            = nodes[i],
-                        scopeElement    = node,
-                        obj             = window,
-                        nodeType        = node.nodeType,
-                        path            = [],
-                        dataArr,dataType,prop,data,scopeData,dataArrItem,nodeBindData,j,parentElement,childNodes,childBinding;
+}
+/*
+ * =Path.prototype.setValue
+ * @about         path.getObjectProperty from scope then set object[property] = value
+ * */
+PathPrototype.setValue = function(node, scope, value){
+}
+/*
+ * =Path.prototype.parse
+ * @about   parse path for example "$index.foo.bar" --> [Item, "foo", "bar"]
+ *          path.bind model
+ * */
+PathPrototype.parse = function(path){
+}
+/*
+ * =Path.prototype.bind
+ * @about   path.getObjectProperty then modify binding binding[model1, View] --> [model2, View], remove empty models
+ * */
+PathPrototype.bind  = function(view, scope){
+}
+/*
+ * =Path.prototype.unbind
+ * @about   path.getObjectProperty then remove binding binding[model, View]
+ * */
+PathPrototype.unbind  = function(view, scope){
+}
+/*
+ * =Path.prototype.getObjectProperty
+ * @about   walk all items and Item.get() --> get object property from scope, node is used in Item
+ * */
+PathPrototype.getObjectProperty = function(node, scope){
 
-                    //get scopeElement
-                    while(scopeElement){
-                        nodeBindData    = scopeElement.nodeBindData;
-                        if(nodeBindData && nodeBindData.scope){
-                            scopeData   = scopeElement.nodeBindData.scope;
-                            obj         = scopeData;
-                            //register child binding path for repeat content to find child
-                            //because path will not change after repeat content generated
-                            childBinding    = scopeElement.nodeBindData.childBinding;
-                            if(childBinding) childBinding.push({"nodePath": path, "dataPath": dataPath})
-                            break;
-                        }
-                        //get node path of scopeElement
-                        parentElement   = scopeElement.parentElement;
-                        if(parentElement){
-                            childNodes      = parentElement.childNodes;
-                            for(j in childNodes){
-                                if(childNodes[j]==scopeElement){
-                                    path.push(Number(j));
-                                }
-                            }
-                        }
-                        scopeElement  = scopeElement.parentElement;
-                    }
-                    //console.log(scopeElement)
-                    //get data
-                    dataArr     = dataPath.replace(/\[/g,'.').replace(/\]/g,'').split('.');
-                    prop        = dataArr.pop();
-                    if(prop == "$i"){
-                        prop    = nodeBindData.index - 1;
-                    }
-                    while(dataArr.length){
-                        dataArrItem = dataArr.shift();
-                        if(dataArrItem == "$i"){
-                            obj = obj[nodeBindData.index];
-                        }else{
-                            obj = obj[dataArrItem];
-                        }
-                    }
-                    data        = obj[prop];
-                    dataType    = typeof(data);
-                    //console.log(node,dataPath,prop,obj,obj[prop],data)
-                    //handle function
-                    function handle(func){
-                        func(data);
-                        //getter setter
-                        var _data = data;
-                        try{
-                            Object.defineProperty(obj, prop, {
-                                get : function(){
-                                    return _data;
-                                },
-                                set : function(value){
-                                    func(value);
-                                    _data = value;
-                                },
-                                enumerable  : true
-                            })
-                        }catch(e){};
-                    };
+}
+/*
+ * Template
+ * */
+function Template   = function(template){
+    var self    = this;
+    self.origin = template;//"{{$index.foo.bar}} is {{obj.prop}}"
+    self.parsed = self.parse(template);//[Path," is ",Path]
+}
+var TemplatePrototype   = Template.prototype;
+/*
+ * =Template.prototype.get
+ * @about   get scope --> walk path and call path.get(node, scope) --> join Template.parsed for example: [Path," is ",Path] --> "value is nice"
+ * */
+TemplatePrototype.get   = function(node){
+}
+/*
+ * =Template.prototype.set
+ * @about   set template.origin = template --> parse template.origin
+ * */
+TemplatePrototype.set   = function(template){
+    
+}
+/*
+ * =Template.prototype.setValue
+ * @about   matchset for example origin: "{{$index.foo.bar}} is {{obj.prop}}" --> get path "{{$index.foo.bar}}" and path.setValue(value)
+ * */
+TemplatePrototype.setValue   = function(value){
 
-                    //ELEMENT handle
-                    function ELEMENTHandle(){
-                        if(dataType == "boolean"){//Boolean
-                            handle(function(value){
-                                if(value){
-                                    node.style.display  = 'block';
-                                    //replace class nodeBindHidden with class nodeBindShow
-                                }else{
-                                    node.style.display  = 'none';
-                                    //replace class nodeBindShow with class nodeBindHidden
-                                }
-                            });
-                        }else if(dataType == "number" || dataType == "string"){//Number string
-                            handle(function(value){
-                                node.textContent    = value;
-                            })
-                        }else if(data == undefined || data == null){//undefined null
-                            //replace class nodeBindShow with class nodeBindHidden
-                        }else if(isObject(data)){//Object
-                            //prototype chain
-                            function prototypeData(){
-                                for(k in data)  this[k] = data[k];
-                            }
-                            prototypeData.prototype = scopeData;
-                            node.nodeBindData = {
-                                "scope"         : new prototypeData(),
-                                "childBinding"  : []
-                            };
-                        }else if(isArray(data)){//Array
-                            var len             = data.length,
-                                fragment        = document.createDocumentFragment(),
-                                instances;
-                            //change data to observable array
-                            node.nodeBindData   = {
-                                "scope"         : '',
-                                "instances"     : [],
-                                "childBinding"  : [],
-                                "index"         : 1
-                            }
-                            instances   = node.nodeBindData.instances;
-                            //handle exist getter setter ArrayObserve will store origin data (include getter setter) so both change and original getter setter will be triggered
-                            ArrayObserve(obj, prop, (function(node){
-                                return function(change){
-                                    var type    = change.type,
-                                        index   = Number(change.name) + 1,
-                                        value   = change.value,
-                                        tempNode,childNode,i,j,len,lastInstance,item,nodePath,childBinding;
-                                    if(type == "new"){
-                                        if(index != 1){
-                                            tempNode    = node.cloneNode(true);
-                                            tempNode.nodeBindData   = {
-                                                "scope"     : change.object,
-                                                "prototype" : node,
-                                                "index"     : index
-                                            }
-                                            len = instances.length;
-                                            if(len > 0){
-                                                lastInstance    = instances[len - 1];
-                                            }else{
-                                                lastInstance    = node
-                                            }
-                                            node.parentNode.insertBefore(tempNode, lastInstance.nextSibling);
-                                            instances.push(tempNode);
+}
+/*
+ * =Template.prototype.get scope
+ * @about   for all child paths owns same scope
+ * */
+TemplatePrototype.getScope  = function(node){
 
-                                            //bind child bindings
-                                            childNode       = tempNode;
-                                            childBinding    = node.nodeBindData.childBinding;
-                                            for(i=0; i<childBinding.length; i++){
-                                                item        = childBinding[i];
-                                                nodePath    = item.nodePath;
-                                                for(j=nodePath.length - 1; j>=0; j--){
-                                                    childNode   = childNode.childNodes[nodePath[j]];
-                                                }
-                                                //console.log(childNode,item.dataPath)
-                                                NodeBind(childNode).bind(item.dataPath);
-                                            }
-                                        }
-                                    }else if(type == "updated"){
-                                        //do nothing
-                                    }else if(type == "deleted"){
-                                        var deleteNode = instances[index - 2];//one for 0 start ,one for node it self
-                                        deleteNode.parentNode.removeChild(deleteNode);
-                                        //delete instances[index - 2]
-                                        instances.splice(index -2, 1);
-                                    }
-                                }
-                            })(node));
-                            node.nodeBindData.scope = obj[prop];
-                        }else if(dataType == "function"){
-                        }
-                    };
+}
+/*
+ * =Template.prototype.parse
+ * @about   parse value for example "{{$index.foo.bar}} is {{obj.prop}}" --> [Path, " is ", Path]
+ * */
+TemplatePrototype.parse = function(value){
 
-                    function ATTRIBUTEHandle(){
-                        if(dataType == "boolean"){//Boolean
-                        }else if(dataType == "number" || dataType == "string"){//Number string
-                        }else if(data == undefined || data == null){//undefined null
-                        }else if(isObject(data)){//Object
-                        }else if(isArray(data)){//Array
-                        }
-                    };
+}
+/*
+ * =Template.prototype.bind
+ * @about   template.getScope --> walk all path and call path.bind(view, scope)
+ * */
+TemplatePrototype.bind  = function(view){
+}
+/*
+ * =Template.prototype.unbind
+ * @about   walk all path and call path.unbind(view, scope)
+ * */
+TemplatePrototype.unbind    = function(view){
 
-                    //handle data with nodeBindData scope
-                    if(nodeType == 1){//ELEMENT
-                        ELEMENTHandle();
-                    }else if(nodeType == 2){//ATTRIBUTE
-                        ATTRIBUTEHandle();
-                    }
-                }
-            },
-        }
-    }
-    window.NodeBind = Node;
-})()
+}
+/*
+ * =Directive
+ * */
+function Directive(directive){
+    var self    = this;
+    self.origin = directive;
+    self.parsed = self.parse(directive);
+}
+var DirectivePrototype  = Directive.prototype;
+/*
+ * =Direcitve.prototype.parse
+ * @about   "attribute.style.top" --> {type: "attribute", detail: ["style","top"]}
+ * */
+DirectivePrototype.parse    = function(){
+
+}
+/*
+ * =View
+ * @about   View <-- Template: "{{$index.foo.bar}} is {{obj.prop}}" <-- Path: "$index.foo.bar" <-- Item: 0
+ * */
+function View(node, directive, scope, template){
+    var self        = this;
+    self.node       = node;
+    self.directive  = new Directive(directive);
+    self.template   = new Template(template);
+}
+var ViewPrototype   = View.prototype;
+/*
+ * =View.prototype.set
+ * */
+ViewPrototype.set   = function(node, directive, scope, template){
+
+}
+/*
+ * =View.prototype.refresh
+ * @about   View.render and View.bind
+ * */
+ViewPrototype.refresh   = function(){
+    
+}
+/*
+ * =View.prototype.render
+ * @about   according directive render template.get()
+ * */
+ViewPrototype.render    = function(){
+
+}
+/*
+ * =View.prototype.bind
+ * @about   call view.template.bind()
+ * * */
+ViewPrototype.bind  = function(){
+}
+/*
+ * =View.prototype.unbind
+ * @about   call view.unbind()
+ * */
+ViewPrototype.unbind    = function(){
+
+}
+/*
+ * =View.prototype.listener
+ * @about   if view change, this function will call
+ * */
+viewPrototype.listener  = function(){
+
+}
+/*
+ * =View.prototype.refreshListener
+ * @about   refresh listener
+ * */
+ViewPrototype.refreshListener   = function(){
+
+}
+/*
+ * =Model
+ * */
+function Model(object, property){
+    var self    = this;
+    self.object     = object;
+    self.property   = property;
+}
+var ModelPrototype  = Model.prototype;
+/*
+ * =Model.prototype.get
+ * @about   return model.object[model.property]
+ * */
+ModelPrototype.get  = function(){
+
+}
+/*
+ * =Model.prototype.set
+ * @about   set model.object[model.property] = value
+ * */
+ModelPrototype.set  = function(value){
+
+}
+/*
+ * =Model.prototype.updateViews
+ * @about bindings.getViews --> render
+ * */
+ModelPrototype.updateViews  = function(){
+
+}
+/*
+ * =Model.prototype.refreshListener
+ * @about   refresh model listener
+ * */
+ModelPrototype.refreshListener  = function(){
+
+}
+/*
+ * =Bindings
+ * */
+function Bindings(){
+    var self        = this;
+    self.bindings   = [];
+}
+var BindingsPrototype   = Bindings.prototype;
+/*
+ * =Bindigns.prototype.bind
+ * @about   match binding, if new create
+ * */
+BindingsPrototype.bind  = function(model, view){
+
+}
+/*
+ * =Bindings.prototype.unbind
+ * @about   match binding, if has remove
+ * */
+BindingsPrototype.unbind    = function(model, view){
+
+}
+/*
+ * =Bindings.prototype.getModels
+ * @about   find match models
+ * */
+BindingsPrototype.getModels = function(view){
+
+}
+/*
+ * =Bindings.prototype.getViews
+ * @about find match views
+ * */
+BindingsPrototype.getViews  = function(model){
+
+}
+})(document, window)

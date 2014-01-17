@@ -69,7 +69,13 @@ object(object).attribute    = node(node).attribute;
 node(node)[attribute]       = object(object)[attribute];
 object(object)[attribute]   = node(node)[attribute];
 */
-
+/*
+Bind(Element, 'attribute', object, 'property');
+Bind.prototype.bind = function(name, object, property){
+    if(name == 'myBinding'){
+    }else Bind.prototype.prototype.bind.call(this, name, object, property);
+}
+*/
 /*
 Node(node,attribute).bind(object,attribute)
 *
