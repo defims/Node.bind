@@ -320,6 +320,24 @@ TemplatePrototype.bind  = function(view, node){
     }
 }
 /*
+ * =Template.prototype.getObjectProperty
+ * @about   get all path's object property
+ * */
+TemplatePrototype.getObjectProperty  = function(view, node){
+    var self            = this
+        ,parsedTemplate = view.template.parsed
+        ,len            = parsedTemplate.length
+        ,scope          = self.getScope(node)
+        ,objProps       = []
+        ,path
+        ;
+    while(len--){
+        path    = parsedTemplate[len];
+        if(path.bind) objProps.push(path.getObjectProperty(node, scope));
+    }
+    return objProps
+}
+/*
  * =Template.prototype.unbind
  * @about   walk all path and call path.unbind(view, scope)
  * */
@@ -367,6 +385,7 @@ function View(node, directive, scope, template){
     self.node       = node;
     self.directive  = new Directive(directive);
     self.template   = new Template(template);
+    self.bindings   = [];
     self.refresh();
 }
 var ViewPrototype   = View.prototype;
@@ -424,7 +443,7 @@ ViewPrototype.bind  = function(){
     var self                = this
         ,node               = self.node
         ;
-    self.template.bind(self, node);
+    //self.template.bind(self, node);
 }
 /*
  * =View.prototype.unbind
@@ -434,12 +453,22 @@ ViewPrototype.unbind    = function(){
 
 }
 /*
+ * =View.prototype.getObjectProperty
+ * @about   get all object and Property, template.getObjectProperty <-- path.getObjectProperty
+ * */
+ViewPrototype.getObjectProperty  = function(){
+     var self                = this
+        ,node               = self.node
+        ;
+    return self.template.getObjectProperty(self, node);
+}
+/*
  * =View.prototype.listener
  * @about   if view change, view.listener will call
- * */
+ * *
 ViewPrototype.listener  = function(){
 
-}
+}*/
 /*
  * =View.prototype.refreshListener
  * @about   refresh listener
@@ -544,7 +573,7 @@ BindingsPrototype.getViews  = function(model){
  * =NodeBind
  * */
 function NodeBind(nodes, directive, scope, template){
-    var nodesLen,node,views,view;
+    var nodesLen,node,views,view,objProps,objProp,len,model;
     if(!nodes.length) nodes = [nodes];
     if(!template && typeof(scope) == 'string'){//NodeBind(node(s), 'directive', template);
         template    = scope;
@@ -553,10 +582,21 @@ function NodeBind(nodes, directive, scope, template){
     nodesLen    = nodes.length;
     while(nodesLen--){
         node    = nodes[nodesLen];
+        //scope
         NodeBind.setScope(node, scope);//for absolute scope
+        //view
         view    = new View(node, directive, scope, template);
         views   = node.nbViews = node.nbViews || [];
         views.push(view);
+        //model
+        objProps    = view.getObjectProperty();
+        len         = objProps.length;
+        while(len--){
+            objProp = objProps[len];
+            model   = new Model(objProp.object, objProp.property)
+            view.bind(model, model.update);
+            model.bind(view, view.render);
+        }
     }
 }
 /*
