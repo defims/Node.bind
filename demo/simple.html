@@ -5,16 +5,35 @@
     <script src="../Node.bind.js"></script>
 </head>
 <body>
-    <div id='elementObject'>
+    <!--<div
+        data-bind-textContent="{{obj.path[0].to[0].value}}"
+        data-bind-attribute-id=""
+        data-bind-attribute-class=""
+        data-bind-attribute-style=""
+        data-bind-attribute-style-top=""
+        data-bind-attribute-custom-define=""
+        data-bind-dataset-a-b=""
+        data-bind-event-click=""
+        data-bind-childnode-1-nodevalue=""
+        data-bind-scope
+    ></div>
+    <input
+        data-bind-attribute-value=""
+    />
+    -->
+    <div id="textContent"></div>
+    <div>
         <div id="nestScope">
             <div id="objectChild"></div>
             <div id="objectChild2"></div>
             <div id="objectChild3"></div>
         </div>
     </div>
-    <div class='elementArray'>
-        <div class="arrayChild">elementArray</div>
-    </div>
+    <ul>
+        <li
+            data-bind-repeat=""
+        >elementArray</li>
+    </ul>
 <div id='elementBoolean'></div>
 <div id='elementNumber'></div>
 <script>
@@ -33,7 +52,11 @@ var data ={
         //observe(target, callback);
     }
 };
-NodeBind(document.getElementById('elementObject'), 'textContent', data, '{{obj.path[0].to[0].value}}');
+var $   = function(selector){
+    return document.querySelectorAll(selector)
+}
+NodeBind($('#textContent'), 'textContent', data, '{{obj.path[0].to[0].value}}');
+//NodeBind(document.getElementById('elementObject'), 'textContent', data, '{{obj.path[0].to[0].value}}');
 //Node(node, 'textContent').bind(data, 'content');
 //Node(node).bind('textContent', data, 'content');
 //data.path.to.value    = 'hi';

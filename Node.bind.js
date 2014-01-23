@@ -149,7 +149,7 @@ PathPrototype.getValue = function(node, scope){
     var self        = this
         ,objProp    = self.getObjectProperty(node, scope)
         ;
-    return objProp.object[objProp.property]
+    return objProp.object[objProp.property] || ''
 }
 /*
  * =Path.prototype.setValue
@@ -168,19 +168,23 @@ PathPrototype.parse = function(path){
         ,item;
     while(len--){
         item    = pathArr[len];
-        pathArr[len] = new Item(item);
+        if(item.charAt(0) == '$') pathArr[len] = new Item(item);
     }
     return pathArr
 }
 /*
  * =Path.prototype.bind
- * @about   path.getObjectProperty then modify binding binding[model1, View] --> [model2, View], remove empty models
+ * @about   path.getObjectProperty then generate binding [model, view]
  * */
-PathPrototype.bind  = function(view, scope){
+PathPrototype.bind  = function(view, node, scope){
+    var self        = this
+        ,objProp    = self.getObjectProperty(node, scope)
+        ;
+    NodeBind.bindings.bind(objProp.object, objProp.property, view);
 }
 /*
  * =Path.prototype.unbind
- * @about   path.getObjectProperty then remove binding binding[model, View]
+ * @about   path.getObjectProperty then remove binding binding[model, View], and return binding
  * */
 PathPrototype.unbind  = function(view, scope){
 }
@@ -193,10 +197,17 @@ PathPrototype.getObjectProperty = function(node, scope){
         ,parsedPath = self.parsed
         ,len        = parsedPath.length - 1
         ,object     = scope
-        ,property   = parsedPath[len].getValue(node)
+        ,item       = parsedPath[len]
+        ,property   = item
         ,i
         ;
-    for( i=0; i<len; i++) object = object[parsedPath[i].getValue(node)]
+        if(item.getValue) property = item.getValue(node)
+    for( i=0; i<len; i++){
+        item    = parsedPath[i];
+        if(item.getValue) item = item.getValue(node);
+        object = object[item]
+        if(!object) return {"object": {}, "property": undefined}
+    }
     return {"object": object, "property": property}
 }
 /*
@@ -225,11 +236,12 @@ TemplatePrototype.getValue   = function(node){
         ,len            = parsedTemplate.length
         ,result         = ''
         ,scope          = self.getScope(node)
-        ,item;
+        ,path
+        ;
     while(len--){
-        item = parsedTemplate[len];
-        if("getValue" in item) item = item.getValue(node, scope);
-        result = result + item;
+        path = parsedTemplate[len];
+        if(path.getValue) path = path.getValue(node, scope);
+        result = result + path;
     }
     return result
 }
@@ -293,9 +305,19 @@ TemplatePrototype.parse = function(str){
 }
 /*
  * =Template.prototype.bind
- * @about   template.getScope --> walk all path and call path.bind(view, scope)
+ * @about   template.getScope --> walk all path and call path.bind(view, scope) --> return bindings
  * */
-TemplatePrototype.bind  = function(view){
+TemplatePrototype.bind  = function(view, node){
+    var self            = this
+        ,parsedTemplate = view.template.parsed
+        ,len            = parsedTemplate.length
+        ,scope          = self.getScope(node)
+        ,path
+        ;
+    while(len--){
+        path    = parsedTemplate[len];
+        if(path.bind) path.bind(view, node, scope);
+    }
 }
 /*
  * =Template.prototype.unbind
@@ -338,6 +360,7 @@ DirectivePrototype.parse    = function(directive){
  *          node.nbViews will store views
  *          since view use refresh technology, setTimeout can be use for refresh like kindle
  *          keep global unique always
+ *          view member can be store in element dataset like data-nb-attribute-style-top="{{foo.bar}}em", data-nb-directive="template", and other node will be data-nb-childnode-1-directive="template", which is used for coping
  * */
 function View(node, directive, scope, template){
     var self        = this;
@@ -372,26 +395,36 @@ ViewPrototype.render    = function(){
         ,node               = self.node
         ,nodeType           = node.nodeType
         ,parsedDirective    = self.directive.parsed
-        ,type               = parsedDirective.type
+        ,type               = parsedDirective.type.toLowerCase()
         ,detail             = parsedDirective.detail
         ,template           = self.template
         ,value              = template.getValue(node)
         ,ELEMENT_NODE       = 1
         ,TEXT_NODE          = 3
         ;
-    if(type == "textContent"){
+    if(type == "textcontent"){
         if(nodeType == ELEMENT_NODE){
             if(node.textContent != value) node.textContent  = value;
         }else if(nodeType == TEXT_NODE){
             if(node.nodeValue != value) node.nodeValue = value;
         }
+    }else if(type == "scope"){
+        if(nodeType == ELEMENT_NODE){
+            console.log(value)
+            //NodeBind.setScope(node, value);//for absolute scope
+        }
     }
 }
 /*
  * =View.prototype.bind
- * @about   call view.template.bind()
+ * @about   call view.template.bind() --> get bindings --> get from NodeBind.bindings --> match modify model or add binding
+ *          bind function create model
  * * */
 ViewPrototype.bind  = function(){
+    var self                = this
+        ,node               = self.node
+        ;
+    self.template.bind(self, node);
 }
 /*
  * =View.prototype.unbind
@@ -474,14 +507,23 @@ var BindingsPrototype   = Bindings.prototype;
  * =Bindigns.prototype.bind
  * @about   match binding, if new create
  * */
-BindingsPrototype.bind  = function(model, view){
-
+BindingsPrototype.bind  = function(object, property, view){
+    console.log(arguments)
+    var self        = this
+        ,bindings   = self.bindings
+        ,len        = bindings.length
+        ,binding
+        ;
+    while(len--){
+        binding = bindings[len];
+        
+    }
 }
 /*
  * =Bindings.prototype.unbind
  * @about   match binding, if has remove
  * */
-BindingsPrototype.unbind    = function(model, view){
+BindingsPrototype.unbind    = function(object, property, view){
 
 }
 /*
@@ -511,9 +553,10 @@ function NodeBind(nodes, directive, scope, template){
     nodesLen    = nodes.length;
     while(nodesLen--){
         node    = nodes[nodesLen];
-        NodeBind.setScope(node, scope);
+        NodeBind.setScope(node, scope);//for absolute scope
+        view    = new View(node, directive, scope, template);
         views   = node.nbViews = node.nbViews || [];
-        views.push(new View(node, directive, scope, template));
+        views.push(view);
     }
 }
 /*
@@ -527,6 +570,66 @@ NodeBind.setScope   = function(node, scope){
 }
 NodeBind.bindings   = new Bindings;
 NodeBind.utility    = utility;
+/*
+NodeBind.compile    = function(element){
+    var children    = element.getElementsByTagName("*")
+        ,len        = children.length
+        ,child
+        ;
+    while(len--){
+        child   = children[len];
+
+    }
+}
+*/
 window.NodeBind = NodeBind;
 
+/*
+ *  = walkDocumentTree
+ *  @callback   {function}
+ * *
+function walkDocumentTree(callback){
+    var allElements =   'all' in document ?
+                        document.all :
+                        allElements = document.getElementByTagName('*'),
+        len         = allElements.length;
+    while(len--) callback(allElements[len]);
+}
+/**/
+/*
+ *  =bootstrap
+ *
+ * *
+var attachEvent = 'attachEvent',
+    addEventListener = 'addEventListener',
+    readyEvent = 'DOMContentLoaded';
+if( !document[addEventListener] )
+    addEventListener =  document[attachEvent]
+                        ? (readyEvent = 'onreadystatechange') && attachEvent
+                            : '';
+window['domReady'] = function(f) {
+    /in/.test(document.readyState)
+        ? !addEventListener
+            ? setTimeout(function() { window['domReady'](f); }, 9)
+            : document[addEventListener](readyEvent, f, false)
+        : f();
+};
+domReady(function(){
+    walkDocumentTree(function(element){//can extract for repeat
+        //if element.model change
+        var attributes  = element.attributes
+            ,len        = attributes.length
+            ,attribute,directive,directiveLen
+            ;
+        while(len--){
+            attribute   = attributes[len];
+            if(attribute.nodeName.match(/data-bind-(.*)/gim)){
+                directive       = RegExp.$1.replace(/-/gim,'.');
+                NodeBind(element, directive, attribute.nodeValue)
+            }
+        }
+    });
+    NodeBind.compile(document);
+});
+/**/
 })(document, window)
