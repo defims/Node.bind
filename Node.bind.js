@@ -65,6 +65,20 @@
  * nbScope
  * nbViews
  * nbModels
+ *
+ * circle:
+ *
+ * View --> Model
+ * view change --> view.change --> match model --> model.update
+ *
+ * View <-- Model
+ * model change --> model.change --> match view --> view.render
+ *
+ * Model --> Model
+ * model change --> model.change --> match model --> model.update
+ * */
+/*
+ * =utility
  * */
 var utility = {}
 /*
@@ -113,9 +127,29 @@ ItemPrototype.getValue   = function(node){
         ;
     if(origin == "$index"){
         //get from node
+        var find        = false
+            ,scopeNode  = node
+            ;
+        while(scopeNode){
+            if(scopeNode.nbPrototype || scopeNode.nbInstances){
+                find    = true;
+                break;
+            }
+            scopeNode    = scopeNode.parentElement;
+        }
+        result = 0;
+        if(find && scopeNode.nbPrototype){
+            console.log(scopeNode)
+            while(scopeNode && scopeNode.nbPrototype){
+                result --;
+                scopeNode   = scopeNode.prevSibling;
+            }
+            result = -result;
+        }
     }else{
         result  = origin
     }
+    console.log(result)
     return result
 }
 /*
@@ -228,20 +262,22 @@ TemplatePrototype.set   = function(template){
 }
 /*
  * =Template.prototype.get
- * @about   get scope --> walk path and call path.get(node, scope) --> join Template.parsed for example: [Path," is ",Path] --> "value is nice"
+ * @about   get scope --> walk path and call path.get(node, scope) --> join Template.parsed for example: [Path," is ",Path] --> ["value", " is ", "nice"]
+ *          Path value can be object
  * */
-TemplatePrototype.getValue   = function(node){
+TemplatePrototype.getValue   = function(node, scope){
     var self            = this
         ,parsedTemplate = self.parsed
         ,len            = parsedTemplate.length
-        ,result         = ''
-        ,scope          = self.getScope(node)
+        ,result         = []
+        ,scope          = scope || self.getScope(node)
         ,path
         ;
     while(len--){
         path = parsedTemplate[len];
         if(path.getValue) path = path.getValue(node, scope);
-        result = result + path;
+        //result = result + path;
+        result.push(path);
     }
     return result
 }
@@ -254,9 +290,10 @@ TemplatePrototype.setValue   = function(value){
 }
 /*
  * =Template.prototype.get scope
- * @about   for all child paths owns same scope
+ * @about   all child paths owns same scope
  * */
 TemplatePrototype.getScope  = function(node){
+    console.log('get scope')
     var find    = false
         ,win    = window
         ,scope
@@ -311,7 +348,7 @@ TemplatePrototype.bind  = function(view, node){
     var self            = this
         ,parsedTemplate = view.template.parsed
         ,len            = parsedTemplate.length
-        ,scope          = self.getScope(node)
+        ,scope          = view.scope || self.getScope(node)
         ,path
         ;
     while(len--){
@@ -327,7 +364,7 @@ TemplatePrototype.getObjectProperty  = function(view, node){
     var self            = this
         ,parsedTemplate = view.template.parsed
         ,len            = parsedTemplate.length
-        ,scope          = self.getScope(node)
+        ,scope          = view.scope || self.getScope(node)
         ,objProps       = []
         ,path
         ;
@@ -383,10 +420,12 @@ DirectivePrototype.parse    = function(directive){
 function View(node, directive, scope, template){
     var self        = this;
     self.node       = node;
+    self.scope      = scope;
     self.directive  = new Directive(directive);
     self.template   = new Template(template);
     self.bindings   = [];
-    self.refresh();
+    //self.refresh();
+    self.render();
 }
 var ViewPrototype   = View.prototype;
 /*
@@ -398,18 +437,18 @@ ViewPrototype.set   = function(node, directive, scope, template){
 /*
  * =View.prototype.refresh
  * @about   View.render and View.bind
- * */
+ * *
 ViewPrototype.refresh   = function(){
     var self = this;
     self.render();
-    self.bind();
+    //model.bind(view, view.refresh);
 }
 /*
  * =View.prototype.render
  * @about   according directive render template.get()
- *          if directive.type is repeat, keep instances number --> clone views to new instance with new node --> find and set scope --> trigger scope setter
+ *          if directive.type is repeat, keep instances number --> clone models and views to new instance with new node --> two way bind model and view --> find and set scope
  * */
-ViewPrototype.render    = function(){
+ViewPrototype.render    = function(){//according to directive.type,render view.
     var self                = this
         ,node               = self.node
         ,nodeType           = node.nodeType
@@ -417,11 +456,12 @@ ViewPrototype.render    = function(){
         ,type               = parsedDirective.type.toLowerCase()
         ,detail             = parsedDirective.detail
         ,template           = self.template
-        ,value              = template.getValue(node)
+        ,value              = template.getValue(node, self.scope)
         ,ELEMENT_NODE       = 1
         ,TEXT_NODE          = 3
         ;
     if(type == "textcontent"){
+        value   = value.join();
         if(nodeType == ELEMENT_NODE){
             if(node.textContent != value) node.textContent  = value;
         }else if(nodeType == TEXT_NODE){
@@ -432,14 +472,46 @@ ViewPrototype.render    = function(){
             console.log(value)
             //NodeBind.setScope(node, value);//for absolute scope
         }
+    }else if(type == "repeat"){
+        value   = value[0];
+        console.log(value)
+        var len         = value.length
+            ,instances  = node.nbInstances  = node.nbInstances || []
+            ,i,item,newNode
+            ;
+
+        //todo when modify element
+        for(i=0; i<len; i++){
+            if(i==0){//prototype
+                lastInstance    = node;
+            }else if(instances[i-1]){//exist instance
+                lastInstance    = instances[i-1];
+            }else{//new instance
+                newNode             = node.cloneNode(true);
+                newNode.nbPrototype = node;
+                lastInstance.parentNode.insertBefore(newNode, lastInstance.nextSibling);
+                lastInstance        = newNode;
+                instances.push(lastInstance);
+            }
+        }
+        /*delete more to do
+         *
+        len -= 2;
+        while(++len<instances.length){//extra instance
+            lastInstance    = instances[len];
+            //todo remove models and views
+            lastInstance.parentNode.removeChild(lastInstance)
+            delete instances[len];
+        }
+        /**/
     }
 }
 /*
  * =View.prototype.bind
- * @about   call view.template.bind() --> get bindings --> get from NodeBind.bindings --> match modify model or add binding
- *          bind function create model
+ * @about   put into view.bindings for call when view.change
+ *          A <- B if B change call A's function --> B.bind(A)
  * * */
-ViewPrototype.bind  = function(){
+ViewPrototype.bind  = function(target, callback){
     var self                = this
         ,node               = self.node
         ;
@@ -447,9 +519,9 @@ ViewPrototype.bind  = function(){
 }
 /*
  * =View.prototype.unbind
- * @about   call view.unbind()
+ * @about   remove from view.bindings
  * */
-ViewPrototype.unbind    = function(){
+ViewPrototype.unbind    = function(target){
 
 }
 /*
@@ -463,12 +535,13 @@ ViewPrototype.getObjectProperty  = function(){
     return self.template.getObjectProperty(self, node);
 }
 /*
- * =View.prototype.listener
- * @about   if view change, view.listener will call
- * *
-ViewPrototype.listener  = function(){
+ * =View.prototype.change
+ * @about   if view change, view.change will be called
+ *          change template.origin to RegExp --> get path match value --> match binding in bindings --> call binding.callback
+ * */
+ViewPrototype.change    = function(){
 
-}*/
+}
 /*
  * =View.prototype.refreshListener
  * @about   refresh listener
@@ -482,9 +555,11 @@ ViewPrototype.refreshListener   = function(){
  * @about   keep global unique always
  * */
 function Model(object, property){
-    var self    = this;
+    var self        = this;
     self.object     = object;
     self.property   = property;
+    self.bindings   = [];//[target: view|model, callback: render|update]
+    self.refreshListener();
 }
 var ModelPrototype  = Model.prototype;
 /*
@@ -502,31 +577,107 @@ ModelPrototype.set  = function(value){
 
 }
 /*
- * =Model.prototype.updateViews
- * @about bindings.getViews --> render
+ * =Model.prototype.update
+ * @about   this method is used in other target's binding[target: target, callback: update] for calling back
+ *          this method can be override, for complex need.
  * */
-ModelPrototype.updateViews  = function(){
+ModelPrototype.update   = function(){//model.object[model.property] = value;
 
 }
 /*
- * =Model.prototype.listener
- * @about   if model change model.listener will be call
+ * =Model.prototype.change
+ * @about   if model change model.this method will be call
  * */
-ModelPrototype.listener = function(){
-
+ModelPrototype.change   = function(change){
+    var self    = this
+        ,bindings   = self.bindings
+        ,len        = bindings.length
+        ,binding
+        ;
+    while(len--){
+        binding = bindings[len];
+        binding.callback.call(binding.target, change.value)
+    }
 }
 /*
  * =Model.prototype.refreshListener
- * @about   refresh model listener, if model change model.updateViews
+ * @about   refresh model listener, if model change call model.change
  *          only need to notice change status, no detail needed, view will get what it need itself.
  *          if object[property] is array, watch it's new and delete, else watch it's change.
  * */
 ModelPrototype.refreshListener  = function(){
-    
+    var self        = this
+        ,object     = self.object
+        ,property   = self.property
+        ,_value     = object[property]
+        ;
+    //listen object[property] = new value
+    if(object && property)
+    Object.defineProperty(object, property, {
+        get     : function(){
+            return _value
+        },
+        set    : function(value){
+            var oldValue    = _value
+            _value          = value;
+            self.change({
+                "object"    : object
+                ,"property" : property
+                ,"oldValue" : oldValue
+                ,"value"    : value
+            })
+        }
+    })
+    //if type of object[property] is Array, listen object[property][i] new , modify , delete
+}
+/*
+ * =Model.prototype.getBinding
+ * @about   get binding from model.bindings and match target key
+ * */
+ModelPrototype.getBinding   = function(target){
+    var self        = this
+        ,bindings   = self.bindings
+        ,len        = bindings.length
+        ,has        = false
+        ,binding
+        ;
+    while(len--){
+        binding = bindings[len];
+        if(binding.target == target){
+            has = true;
+            break;
+        }
+    }
+    if(!has){
+        binding = {
+            "target"    : target
+            ,"callback" : undefined
+        }
+        bindings.push(binding)
+    }
+    return binding
+}
+/*
+ * =Model.prototype.bind
+ * @about   put into model.bindings for call when model.change
+ *          A <- B if B change call A's function --> B.bind(A)
+ * */
+ModelPrototype.bind = function(target, callback){
+    var self        = this
+        ,binding    = self.getBinding(target)
+        ;
+    binding.callback    = callback;
+}
+/*
+ * =Model.prototype.unbind
+ * @about   remove from model.bindings
+ * */
+ModelPrototype.unbind   = function(){
+
 }
 /*
  * =Bindings
- * */
+ * *
 function Bindings(){
     var self        = this;
     self.bindings   = [];
@@ -535,7 +686,7 @@ var BindingsPrototype   = Bindings.prototype;
 /*
  * =Bindigns.prototype.bind
  * @about   match binding, if new create
- * */
+ * *
 BindingsPrototype.bind  = function(object, property, view){
     console.log(arguments)
     var self        = this
@@ -551,26 +702,28 @@ BindingsPrototype.bind  = function(object, property, view){
 /*
  * =Bindings.prototype.unbind
  * @about   match binding, if has remove
- * */
+ * *
 BindingsPrototype.unbind    = function(object, property, view){
 
 }
 /*
  * =Bindings.prototype.getModels
  * @about   find match models
- * */
+ * *
 BindingsPrototype.getModels = function(view){
 
 }
 /*
  * =Bindings.prototype.getViews
  * @about find match views
- * */
+ * *
 BindingsPrototype.getViews  = function(model){
 
 }
+
 /*
  * =NodeBind
+ * @about   handle parameters and call NodeBindCore
  * */
 function NodeBind(nodes, directive, scope, template){
     var nodesLen,node,views,view,objProps,objProp,len,model;
@@ -580,35 +733,44 @@ function NodeBind(nodes, directive, scope, template){
         scope       = undefined;
     }
     nodesLen    = nodes.length;
-    while(nodesLen--){
-        node    = nodes[nodesLen];
-        //scope
-        NodeBind.setScope(node, scope);//for absolute scope
-        //view
-        view    = new View(node, directive, scope, template);
-        views   = node.nbViews = node.nbViews || [];
-        views.push(view);
-        //model
-        objProps    = view.getObjectProperty();
-        len         = objProps.length;
-        while(len--){
-            objProp = objProps[len];
-            model   = new Model(objProp.object, objProp.property)
-            view.bind(model, model.update);
-            model.bind(view, view.render);
-        }
+    while(nodesLen--) NodeBind.core(nodes[nodesLen], directive, scope, template)
+}
+/*
+ * =NodeBind.core
+ * @about   bind with single node and right parameters
+ * */
+NodeBind.core   = function(node, directive, scope, template){
+    //scope
+    NodeBind.setScope(node, scope);//for absolute scope
+    //view
+    view    = new View(node, directive, scope, template);
+    views   = node.nbViews = node.nbViews || [];
+    views.push(view);
+    //model
+    objProps    = view.getObjectProperty();
+    len         = objProps.length;
+    while(len--){
+        objProp = objProps[len];
+        model   = new Model(objProp.object, objProp.property)
+        models  = node.nbModels = node.nbModels || [];
+        models.push(model);
+        //two way bind
+        view.bind(model, model.update);
+        model.bind(view, view.render);
     }
 }
 /*
  * =setScope
  * @about   //if node is a element, set data-scope on it.
  *          find all one level views refresh, if view's directive is scope or repeat, change it's scope and continue to refresh
+ *          refresh means get view object property, new/modify model, model.refreshListener
+ *          only handle relative view.
  * */
 NodeBind.setScope   = function(node, scope){
     if(!scope) return
     node.nbScope    = scope;
 }
-NodeBind.bindings   = new Bindings;
+//NodeBind.bindings   = new Bindings;
 NodeBind.utility    = utility;
 /*
 NodeBind.compile    = function(element){

@@ -29,10 +29,15 @@
             <div id="objectChild3"></div>
         </div>
     </div>
+    <!--
     <ul>
         <li
             data-bind-repeat=""
         >elementArray</li>
+    </ul>
+    -->
+    <ul class="repeat">
+        <li class="textContent">*</li>
     </ul>
 <div id='elementBoolean'></div>
 <div id='elementNumber'></div>
@@ -55,7 +60,9 @@ var data ={
 var $   = function(selector){
     return document.querySelectorAll(selector)
 }
-NodeBind($('#textContent'), 'textContent', data, '{{obj.path[0].to[0].value}}');
+//NodeBind($('#textContent'), 'textContent', data, '{{obj.path[0].to[0].value}}');
+NodeBind($('.repeat'), 'repeat', data, '{{arr}}');
+NodeBind($('.repeat .textContent'), 'textContent', '{{$index}}')
 //NodeBind(document.getElementById('elementObject'), 'textContent', data, '{{obj.path[0].to[0].value}}');
 //Node(node, 'textContent').bind(data, 'content');
 //Node(node).bind('textContent', data, 'content');
@@ -70,21 +77,23 @@ NodeBind($('#textContent'), 'textContent', data, '{{obj.path[0].to[0].value}}');
 
 //NodeBind(document.getElementById('elementBoolean')).bind('data.bool');
 //NodeBind(document.getElementById('elementNumber')).bind('data.num');
-
-//data.bool   = false;
-//data.num    = 100;
-//data.arr[0] = 20;
-//data.arr.push(5);
-//data.arr.push(6);
-//data.arr.push(9);
-//data.arr.push({a: 3});
-////data.arr[4] = 5;
-//console.log(data.arr)
-//data.arr.push(6);
-//data.arr.pop();
-//data.arr.push({"foo":"bar"})
-//data.arr.push({"foo":"bar"})
-//data.arr[2] = 4;
+setTimeout(function(){
+    data.obj.path[0].to[0].value = 'modify content'
+    //data.bool   = false;
+    //data.num    = 100;
+    //data.arr[0] = 20;
+    //data.arr.push(5);
+    //data.arr.push(6);
+    //data.arr.push(9);
+    //data.arr.push({a: 3});
+    ////data.arr[4] = 5;
+    //console.log(data.arr)
+    //data.arr.push(6);
+    //data.arr.pop();
+    //data.arr.push({"foo":"bar"})
+    //data.arr.push({"foo":"bar"})
+    //data.arr[2] = 4;
+},1000)
 </script>
 <script>
 /*
