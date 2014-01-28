@@ -1,7 +1,7 @@
 <!doctype html>
 <head>
     <script src="../../DefineProperty.polyfill/DefineProperty.polyfill.js"></script>
-    <script src="../../Array.observe/Array.observe.js"></script>
+    <!--    <script src="../../Array.observe/Array.observe.js"></script>-->
     <script src="../Node.bind.js"></script>
 </head>
 <body>
@@ -50,7 +50,7 @@ var data ={
             }]
         }]
     },
-    arr     : [1,2,3,4],
+    arr     : [1],
     bool    : true,
     num     : 90,
     handle  : function(){
@@ -77,8 +77,11 @@ NodeBind($('.repeat .textContent'), 'textContent', '{{$index}}')
 
 //NodeBind(document.getElementById('elementBoolean')).bind('data.bool');
 //NodeBind(document.getElementById('elementNumber')).bind('data.num');
+/**/
 setTimeout(function(){
-    data.obj.path[0].to[0].value = 'modify content'
+    //data.obj.path[0].to[0].value = 'modify content';
+    data.arr[0]     = 3;
+    //data.arr    = [11,12,'a','b'];
     //data.bool   = false;
     //data.num    = 100;
     //data.arr[0] = 20;
@@ -94,6 +97,13 @@ setTimeout(function(){
     //data.arr.push({"foo":"bar"})
     //data.arr[2] = 4;
 },1000)
+/**/
+/**
+setTimeout(function(){
+    data.arr    = ['c', 'd'];
+    data.arr[1] = 88
+},2000)
+/**/
 </script>
 <script>
 /*

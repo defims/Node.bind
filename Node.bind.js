@@ -130,6 +130,7 @@ ItemPrototype.getValue   = function(node){
         var find        = false
             ,scopeNode  = node
             ;
+        //find scope node
         while(scopeNode){
             if(scopeNode.nbPrototype || scopeNode.nbInstances){
                 find    = true;
@@ -138,18 +139,18 @@ ItemPrototype.getValue   = function(node){
             scopeNode    = scopeNode.parentElement;
         }
         result = 0;
+        //get $index
         if(find && scopeNode.nbPrototype){
-            console.log(scopeNode)
-            while(scopeNode && scopeNode.nbPrototype){
-                result --;
-                scopeNode   = scopeNode.prevSibling;
+            while(scopeNode){
+                if ( scopeNode.nbPrototype ) result --;
+                if ( scopeNode.nbInstances ) break;
+                scopeNode   = scopeNode.previousSibling;//get previous instance
             }
             result = -result;
         }
     }else{
         result  = origin
     }
-    console.log(result)
     return result
 }
 /*
@@ -276,7 +277,6 @@ TemplatePrototype.getValue   = function(node, scope){
     while(len--){
         path = parsedTemplate[len];
         if(path.getValue) path = path.getValue(node, scope);
-        //result = result + path;
         result.push(path);
     }
     return result
@@ -293,7 +293,6 @@ TemplatePrototype.setValue   = function(value){
  * @about   all child paths owns same scope
  * */
 TemplatePrototype.getScope  = function(node){
-    console.log('get scope')
     var find    = false
         ,win    = window
         ,scope
@@ -424,8 +423,8 @@ function View(node, directive, scope, template){
     self.directive  = new Directive(directive);
     self.template   = new Template(template);
     self.bindings   = [];
+    self.refreshListener();
     //self.refresh();
-    self.render();
 }
 var ViewPrototype   = View.prototype;
 /*
@@ -470,41 +469,94 @@ ViewPrototype.render    = function(){//according to directive.type,render view.
     }else if(type == "scope"){
         if(nodeType == ELEMENT_NODE){
             console.log(value)
-            //NodeBind.setScope(node, value);//for absolute scope
+            //NodeBind.setTreeScope(node, value);//for absolute scope
         }
     }else if(type == "repeat"){
         value   = value[0];
-        console.log(value)
         var len         = value.length
             ,instances  = node.nbInstances  = node.nbInstances || []
             ,i,item,newNode
             ;
 
-        //todo when modify element
+        //todo when node is textNode
         for(i=0; i<len; i++){
             if(i==0){//prototype
                 lastInstance    = node;
+                //set scope
+                NodeBind.setTreeScope(lastInstance, value);
             }else if(instances[i-1]){//exist instance
                 lastInstance    = instances[i-1];
+                //set scope
+                NodeBind.setTreeScope(lastInstance, value);
             }else{//new instance
+                //clone node tree
                 newNode             = node.cloneNode(true);
-                newNode.nbPrototype = node;
                 lastInstance.parentNode.insertBefore(newNode, lastInstance.nextSibling);
-                lastInstance        = newNode;
-                instances.push(lastInstance);
+                newNode.nbPrototype = node;
+                newNode.nbScope     = node.nbScope;
+                instances.push(newNode);
+                //walk all child nodes and copy models and views --> render
+                NodeBind.walkTree(node, function(depth, path){
+                    var currNode    = this
+                        ,nbViews,viewsLen,nbView,pathLen,i,currNewNode
+                        ;
+                    if(currNode != node && (nbViews = currNode.nbViews)){
+                        //find match node in new node
+                        currNewNode = newNode;
+                        for(i=0,pathLen = path.length; i<pathLen; i++)
+                            currNewNode = currNewNode.childNodes[path[i]];
+                        viewsLen    = nbViews.length;
+                        while(viewsLen--){
+                            nbView  = nbViews[viewsLen];
+                            //create and bind view model for current new node, it will cause render
+                            NodeBind.core(
+                                currNewNode
+                                ,nbView.directive.origin
+                                ,nbView.scope
+                                ,nbView.template.origin
+                            )
+                        }
+                    }
+                })
+                lastInstance = newNode;
             }
         }
-        /*delete more to do
-         *
+        //delete more
         len -= 2;
         while(++len<instances.length){//extra instance
             lastInstance    = instances[len];
             //todo remove models and views
             lastInstance.parentNode.removeChild(lastInstance)
-            delete instances[len];
+            instances[len] = undefined;
         }
-        /**/
     }
+}
+/*
+ * =Model.prototype.getBinding
+ * @about   get binding from model.bindings and match target key
+ * */
+ViewPrototype.getBinding   = function(target){
+    var self        = this
+        ,bindings   = self.bindings
+        ,len        = bindings.length
+        ,has        = false
+        ,binding
+        ;
+    while(len--){
+        binding = bindings[len];
+        if(binding.target == target){
+            has = true;
+            break;
+        }
+    }
+    if(!has){
+        binding = {
+            "target"    : target
+            ,"callback" : undefined
+        }
+        bindings.push(binding)
+    }
+    return binding
 }
 /*
  * =View.prototype.bind
@@ -512,10 +564,10 @@ ViewPrototype.render    = function(){//according to directive.type,render view.
  *          A <- B if B change call A's function --> B.bind(A)
  * * */
 ViewPrototype.bind  = function(target, callback){
-    var self                = this
-        ,node               = self.node
+    var self        = this
+        ,binding    = self.getBinding(target)
         ;
-    //self.template.bind(self, node);
+    binding.callback    = callback;
 }
 /*
  * =View.prototype.unbind
@@ -555,6 +607,7 @@ ViewPrototype.refreshListener   = function(){
  * @about   keep global unique always
  * */
 function Model(object, property){
+    //todd model must be singleton
     var self        = this;
     self.object     = object;
     self.property   = property;
@@ -600,6 +653,68 @@ ModelPrototype.change   = function(change){
     }
 }
 /*
+ * =Observable Array Property
+ * */
+function ObservableArrayPrototype(){
+    var len             = 10//99999//http://exodia.net/javascript/2013/06/21/V8%E5%BC%95%E6%93%8E%E5%AF%B9JS%E6%95%B0%E7%BB%84%E7%9A%84%E4%B8%80%E4%BA%9B%E5%AE%9E%E7%8E%B0%E4%BC%98%E5%8C%96.html//Math.pow(2, 32) - 1
+        ,self           = this
+        ,defineProperty = Object.defineProperty
+        ,descriptor     = {
+            set: function(value){
+                console.log('set [i]',this,value)
+                var self    = this;
+                if(value.flag == "NodeBind_first_set"){
+                    //Object.defineProperty(self, value.index, {value: value.value})
+                    self[value.index] = value.value;
+                    /*self.length = {
+                        "type"      : "NodeBind_refresh_length"
+                        ,"value"    : self.length
+                    }*/
+                }
+            }
+        };
+    while(len--) defineProperty(self, len, descriptor);
+}
+ObservableArrayPrototype.prototype   = Array.prototype;
+ObservableArrayPrototype.constructor = Array;
+/*
+ * =Observable Array
+ * */
+function ObservableArray(array, callback){
+    var _length     = array.length
+        ,len        = _length
+        ,self       = this
+        ,item
+        ;
+    self.test = 1;
+    while(len--) self[len]  = {
+        "flag"      : "NodeBind_first_set"
+        ,"index"    : len
+        ,"value"    : array[len]
+    }
+    //array.push.apply(self, arguments);
+    Object.defineProperty(self, 'length',{
+        get: function(){ return _length },
+        set: function(value){
+            console.log('set length',value)
+            var oldLength   = _length;
+            _length = value;
+            callback();
+        }
+    })
+}
+ObservableArray.prototype   = new ObservableArrayPrototype;
+ObservableArray.constructor = ObservableArrayPrototype;
+var a = [1,2,4];
+var b = new ObservableArray([1,2,4], function(){
+    console.log('change')
+});
+//b.push(2);
+//b[5] ="modify";
+//b[9] ="modify";
+console.log(b.length,b)
+
+/*
  * =Model.prototype.refreshListener
  * @about   refresh model listener, if model change call model.change
  *          only need to notice change status, no detail needed, view will get what it need itself.
@@ -610,25 +725,52 @@ ModelPrototype.refreshListener  = function(){
         ,object     = self.object
         ,property   = self.property
         ,_value     = object[property]
+        ,array,len,item
         ;
     //listen object[property] = new value
-    if(object && property)
-    Object.defineProperty(object, property, {
-        get     : function(){
-            return _value
-        },
-        set    : function(value){
-            var oldValue    = _value
-            _value          = value;
-            self.change({
-                "object"    : object
-                ,"property" : property
-                ,"oldValue" : oldValue
-                ,"value"    : value
-            })
+    //console.log(self,object, property)
+    if(typeof(object) == "object" && property != null && property != undefined){
+        Object.defineProperty(object, property, {
+            get     : function(){
+                return _value
+            },
+            set    : function(value){
+                var oldValue    = _value
+                _value          = value;
+                self.change({
+                    "object"    : object
+                    ,"property" : property
+                    ,"oldValue" : oldValue
+                    ,"value"    : value
+                })
+            }
+        })
+        //todo if type of object[property] is Array, listen object[property][i]'s new and delete
+        //use presudo array length getter setter
+        //no need to watch object[property][i]'s modify, because child bind will cause defineProperty for object[property][i], so ArrayObserve's 9999 max limit can be avoid
+        array   = _value;
+        if( Object.prototype.toString.call( array ) === '[object Array]' ){
+            //create observable array
+            
+            //no need to watch [i]
+            /*len = array.length;
+            while(len--){
+                (function(){
+                    var _value  = array[len];
+                    Object.defineProperty(array, len, {
+                        get     : function(){ return _value }
+                        ,set    : function(value){
+                            console.log('set')
+                            var oldValue    = _value;
+                            _value          = value;
+                        }
+                    })
+                    console.log(array)
+                })()
+            }*/
         }
-    })
-    //if type of object[property] is Array, listen object[property][i] new , modify , delete
+
+    }
 }
 /*
  * =Model.prototype.getBinding
@@ -733,42 +875,134 @@ function NodeBind(nodes, directive, scope, template){
         scope       = undefined;
     }
     nodesLen    = nodes.length;
-    while(nodesLen--) NodeBind.core(nodes[nodesLen], directive, scope, template)
+    while(nodesLen--) NodeBind.core(nodes[nodesLen], directive, scope, template);
 }
 /*
  * =NodeBind.core
- * @about   bind with single node and right parameters
+ * @about   create model view --> two way bind model view --> render view
+ *          bind with single node and right parameters
  * */
 NodeBind.core   = function(node, directive, scope, template){
-    //scope
-    NodeBind.setScope(node, scope);//for absolute scope
-    //view
+    var views,view,models,model,objProps,objProp,len;
+    //create view
     view    = new View(node, directive, scope, template);
     views   = node.nbViews = node.nbViews || [];
     views.push(view);
-    //model
+    //create model
+    models  = node.nbModels = node.nbModels || [];
     objProps    = view.getObjectProperty();
     len         = objProps.length;
     while(len--){
         objProp = objProps[len];
         model   = new Model(objProp.object, objProp.property)
-        models  = node.nbModels = node.nbModels || [];
         models.push(model);
-        //two way bind
+        //two way bind model and view
         view.bind(model, model.update);
         model.bind(view, view.render);
     }
+    //render
+    view.render()
+}
+/*!
+ * Small Walker - v0.1.1 - 5/5/2011
+ * http://benalman.com/
+ * 
+ * Copyright (c) 2011 "Cowboy" Ben Alman
+ * Dual licensed under the MIT and GPL licenses.
+ * http://benalman.com/about/license/
+ */
+ 
+// Walk the DOM, depth-first (HTML order). Inside the callback, `this` is the
+// element, and the only argument passed is the current depth. If the callback
+// returns false, its children will be skipped.
+// 
+// Based on https://gist.github.com/240274
+ 
+NodeBind.walkTree   = function(node, callback) {
+  // This depth value will be incremented as the depth increases and
+  // decremented as the depth decreases. The depth of the initial node is 0.
+    var path   = []
+        ,depth = 0
+        ,skip,tmp
+        ;
+  // Always start with the initial element.
+  do {
+    if ( !skip ) {
+      // Call the passed callback in the context of node, passing in the
+      // current depth as the only argument. If the callback returns false,
+      // don't process any of the current node's children.
+      skip = callback.call(node, depth, path) === false;
+    }
+ 
+    if ( !skip && (tmp = node.firstChild) ) {
+      // If not skipping, get the first child. If there is a first child,
+      // increment the depth since traversing downwards.
+      depth++;
+      path.push(0);
+    } else if ( tmp = node.nextSibling ) {
+      // If skipping or there is no first child, get the next sibling. If
+      // there is a next sibling, reset the skip flag.
+      skip = false;
+      path[path.length-1] ++;
+    } else {
+      // Skipped or no first child and no next sibling, so traverse upwards,
+      tmp = node.parentNode;
+      // and decrement the depth.
+      depth--;
+      // Enable skipping, so that in the next loop iteration, the children of
+      // the now-current node (parent node) aren't processed again.
+      skip = true;
+      path.pop();
+    }
+ 
+    // Instead of setting node explicitly in each conditional block, use the
+    // tmp var and set it here.
+    node = tmp;
+ 
+  // Stop if depth comes back to 0 (or goes below zero, in conditions where
+  // the passed node has neither children nore next siblings).
+  } while ( depth > 0 );
 }
 /*
- * =setScope
+ * =setTreeScope
  * @about   //if node is a element, set data-scope on it.
- *          find all one level views refresh, if view's directive is scope or repeat, change it's scope and continue to refresh
- *          refresh means get view object property, new/modify model, model.refreshListener
+ *          set nbScope --> find all one level views refresh, if view's directive is scope or repeat, change it's scope and continue to refresh
+ *          refresh means get view object property, new/modify model, model.refreshListener and render
  *          only handle relative view.
+ *
  * */
-NodeBind.setScope   = function(node, scope){
+NodeBind.setTreeScope   = function(node, scope){
     if(!scope) return
     node.nbScope    = scope;
+    var nbScope,nbViews,nbView,viewLen,nbModels,nbModel,modelLen,mobjProps,objProp,object,property
+        ;
+    //walk all children
+    NodeBind.walkTree( node, function(depth){
+        currNode    = this;
+        if(currNode != node && (nbViews = currNode.nbViews)){
+            viewLen = nbViews.length;
+            //clean all models
+            nbModels = currNode.nbModels = [];//memory clean todo
+            while(viewLen--){
+                nbView      = nbViews[viewLen];
+                //todo repeat scope view
+                //clean view bindings
+                objProps    = nbView.getObjectProperty();
+                len         = objProps.length;
+                while(len--){
+                    objProp     = objProps[len];
+                    //create new model
+                    nbModel   = new Model(objProp.object, objProp.property)
+                    nbModels.push(nbModel);
+                    //two way bind
+                    nbView.bind(nbModel, nbModel.update);
+                    nbModel.bind(nbView, nbView.render);
+                }
+                //render
+                nbView.render();
+            }
+        }
+    });
 }
 //NodeBind.bindings   = new Bindings;
 NodeBind.utility    = utility;
