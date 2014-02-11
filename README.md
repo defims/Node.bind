@@ -64,10 +64,10 @@ this library use defineProperty for exist property and dirty watch for others, d
 
 ##node data
 
- nbScope
- nbViews
- nbModels
- nbEvents
+ * nbScope
+ * nbViews
+ * nbModels
+ * nbEvents
 
 ##process:
 
