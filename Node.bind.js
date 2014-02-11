@@ -471,7 +471,7 @@ ViewPrototype.render    = function(){//according to directive.type,render view.
         value   = value[0];//todo multi template
         var len         = value.length
             ,instances  = node.nbInstances  = node.nbInstances || []
-            ,i,item,newNode
+            ,i,item,newNode,lastInstance
             ;
 
         //todo when node is textNode
@@ -559,7 +559,6 @@ ViewPrototype.render    = function(){//according to directive.type,render view.
                 }
                 if( node.className != result ) node.className = result;
             }else if(attribute == 'style'){//attribute.style
-                console.log(value,node.style)
                 if(detail[1]){//attributes.style.*
                     var valueLen    = value.length
                         ,detailLen  = detail.length - 1

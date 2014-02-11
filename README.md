@@ -26,6 +26,7 @@ this library use property assessor for exist property and dirty watch for others
 
 this library use aop(aspect oriented programming) in callback inject, so when callback fire, a dirty check function can be call.
 
+      --<--[javascript statement][timer|event|http request callback + dirty check][...]--<--
 
 ###scope
 
@@ -90,10 +91,10 @@ this library use aop(aspect oriented programming) in callback inject, so when ca
 
 ##process:
 
-    +---------------------------------------------------------------+
-    |   <div                                                        |
-    |       data-bind-textContent="{{obj.path[0].to[0].value}}"     |
-    |       data-bind-attribute-id=""                               |
+    +------------------------------------------------------------+
+    |   <div                                                     |\
+    |       data-bind-textContent="{{obj.path[0].to[0].value}}"  | \
+    |       data-bind-attribute-id=""                            +--+
     |       data-bind-attribute-class=""                            |
     |       data-bind-attribute-style=""                            |
     |       data-bind-attribute-style-top=""                        |
@@ -119,13 +120,19 @@ this library use aop(aspect oriented programming) in callback inject, so when ca
                                  compile
                                     |
                                     V
-                            ----view.render----
-                          /                     \
-                         |                       v
-                        model                  view
-                         ^                       |
-                          \                     /
-                            ----model.update---
+                            -->----->----->--
+                          /                    \
+                       change                render
+                         |                      |
+                         |                      v
+                    +---------+            +--------+
+                    |  model  |            |  view  |
+                    +---------+            +--------+
+                         ^                      |
+                         |                      |
+                       update                 change
+                          \                    /
+                             --<----<-----<--
 
 ##Usage
 
