@@ -108,7 +108,13 @@ this library use defineProperty for exist property and dirty watch for others, d
 
 ##Usage
 
-###built-in directive
+###generate
+
+    walk the document and run  NodeBind by youself, you can use your favorate tag
+
+###compile
+
+####built-in directives
 
 * textContent
 * attributes
@@ -117,9 +123,7 @@ this library use defineProperty for exist property and dirty watch for others, d
 * scope
 * repeat
 
-
-
-####textContent directive
+#####textContent
 
     @about   most usable directive, {{}} need for template parse, object is the scope of template,
              if it's undefined , it will search the parent element, top is window.
@@ -131,7 +135,7 @@ this library use defineProperty for exist property and dirty watch for others, d
 
 
 
-####attributes directive
+#####attributes
 
     @about   it will change the node's attribute,
              if directive is attribute.class and template binding data is Array,
@@ -154,7 +158,7 @@ this library use defineProperty for exist property and dirty watch for others, d
     NodeBind($('#attributeCustom'), 'attribute.custom.define', data.attribute, '{{custom}}');
 
 
-####dataset directive
+#####dataset
 
     @about   dataset.data.set.content will point to attribute data-data-set-content
     @usage   ElementBind(element(s), directive, pathScope, 'template');
@@ -163,7 +167,7 @@ this library use defineProperty for exist property and dirty watch for others, d
 
 
 
-####event binding
+#####event
 
     @about   it will bind event and will fixed some problem on different browsers,
              prefix free is supported in directive.
@@ -181,7 +185,7 @@ this library use defineProperty for exist property and dirty watch for others, d
     NodeBind($('#event3'), 'event.transitionEnd', data.event, 'transitionEnd');
 
 
-####scope
+#####scope
 
     @about   it will set model for element, and set element model will trigger scopeBinding,
              if parent element binded a scope, child binding will inhert it.
@@ -195,7 +199,7 @@ this library use defineProperty for exist property and dirty watch for others, d
     NodeBind($('#scopeItem'), 'textContent', '{{path.to.data}}');
 
 
-####repeat
+#####repeat
 
     @about   it will repeat the element and bind the child bindings for new element,
              each repeat element will own a scope,
@@ -207,7 +211,7 @@ this library use defineProperty for exist property and dirty watch for others, d
     NodeBind($('.repeat .textContent1'), 'textContent', '{{$index}}')
 
 
-####nodeValue
+#####nodeValue
 
     @about   actually, above directive is use for element, and this directive test textNode
              NodeBind(element(s), 'textContent', scope, 'template') will overwrite the children
@@ -216,7 +220,7 @@ this library use defineProperty for exist property and dirty watch for others, d
     NodeBind($('#textNode')[0].childNodes, 'nodeValue', data, '{{obj.path[0].to[0].value}}');
 
 
-####custom binding (todo)
+#####custom binding (todo)
 
   @about    all directives will turn to call this function
             use for custom directive
@@ -229,7 +233,7 @@ this library use defineProperty for exist property and dirty watch for others, d
     }
 
 
-####unbind (todo)
+#####unbind (todo)
 
     @about   ElementBind will return a binding which can be use in ElementBind.unbind
 
@@ -237,6 +241,6 @@ this library use defineProperty for exist property and dirty watch for others, d
     ElementBind.unbind(bindId);
 
 
-###example
+##example
     see demo/
 
