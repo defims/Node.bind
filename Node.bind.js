@@ -277,9 +277,11 @@ TemplatePrototype.getValue   = function(node, scope){
     while(len--){
         path = parsedTemplate[len];
         if(path.getValue) path = path.getValue(node, scope);
-        result.push(path);
+        result.unshift(path);
     }
-    return result
+    if(result.length) return result//NodeBind(node(s), 'directive', scope, 'template')
+    else return [scope]//NodeBind(node(s), 'directive', scope, '') or NodeBind(node(s), 'directive', scope)
+    //always return array
 }
 /*
  * =Template.prototype.setValue
@@ -371,7 +373,8 @@ TemplatePrototype.getObjectProperty  = function(view, node){
         path    = parsedTemplate[len];
         if(path.bind) objProps.push(path.getObjectProperty(node, scope));
     }
-    return objProps
+    if(objProps.length) return objProps//NodeBind(node(s), 'directive', scope, 'template')
+    else return [{"object": scope, "property": ''}]//NodeBind(node(s), 'directive', scope, '') or NodeBind(node(s), 'directive', scope
 }
 /*
  * =Template.prototype.unbind
@@ -459,17 +462,10 @@ ViewPrototype.render    = function(){//according to directive.type,render view.
         ,ELEMENT_NODE       = 1
         ,TEXT_NODE          = 3
         ;
-    if(type == "textcontent"){
-        value   = value.join();
+    if(type == "scope"){
         if(nodeType == ELEMENT_NODE){
-            if(node.textContent != value) node.textContent  = value;
-        }else if(nodeType == TEXT_NODE){
-            if(node.nodeValue != value) node.nodeValue = value;
-        }
-    }else if(type == "scope"){
-        if(nodeType == ELEMENT_NODE){
-            console.log(value)
-            //NodeBind.setTreeScope(node, value);//for absolute scope
+            value   = value[0];
+            NodeBind.setTreeScope(node, value);//for absolute scope
         }
     }else if(type == "repeat"){
         value   = value[0];
@@ -528,6 +524,122 @@ ViewPrototype.render    = function(){//according to directive.type,render view.
             //todo remove models and views
             lastInstance.parentNode.removeChild(lastInstance)
             instances[len] = undefined;
+        }
+    }else if(type == "textcontent"){
+        value   = value.join('');
+        if(nodeType == ELEMENT_NODE){
+            if(node.textContent != value) node.textContent  = value;
+        }else if(nodeType == TEXT_NODE){
+            if(node.nodeValue != value) node.nodeValue = value;
+        }
+    }else if(type == "attribute"){
+        if(nodeType == ELEMENT_NODE){
+            var attribute   = detail[0];
+            if(attribute == 'id' && node.id != value){//attribute.id
+                node.id = value;
+            }else if(attribute == 'class'){//attribute.class
+                var len     = value.length
+                    ,result = []
+                    ,attrItem, attrType
+                    ;
+                while(len--){
+                    attrItem    = value[len];
+                    attrType    = Object.prototype.toString.call(attrItem);
+                    if( attrType === '[object Array]' ){//['class1', 'class2']
+                        result.push(attrItem.join(' '))
+                    }else if( attrType === '[object Object]' ){//{'a': 'class1', 'b': 'class2'}
+                        var str = ''
+                            ,k
+                            ;
+                        for(k in attrItem) str += ' ' + attrItem[k];
+                        result.push(str)
+                    }else{
+                        result.push(attrItem)
+                    }
+                }
+                if( node.className != result ) node.className = result;
+            }else if(attribute == 'style'){//attribute.style
+                console.log(value,node.style)
+                if(detail[1]){//attributes.style.*
+                    var valueLen    = value.length
+                        ,detailLen  = detail.length - 1
+                        ,style      = node.style
+                        ,lastItem   = detail[detailLen]
+                        ,item,i,style,lastItem
+                        ;
+                    //search all and set style for example ['1em','2em']
+                    //template is [path, '2em']
+                    //which means the first item is observable, the second is fixed, sometimes it's useful
+                    //search style attribute
+                    for(i=1; i<detailLen; i++) style = style[detail[i]];
+                    while(valueLen--) style[lastItem]  = value[valueLen];
+                }else{//attributes.style
+                    var len = value.length
+                        ,item
+                        ;
+                    //search all and set style for example ['display: block','width: 2em']
+                    //template is [path, 'width: 2em']
+                    //which means the first item is observable, the second is fixed, sometimes it's useful
+                    while(len--){
+                        item    = value[len];
+                        if(typeof(item) == 'string'){//'display:block; width:2em;'
+                            var v   = item.split(';')
+                                ,l  = v.length
+                                ,item2
+                                ;
+                            while(l--){
+                                item2    = v[l].split(':');
+                                node.style[item2[0].replace(' ','')]  = item2[1];
+                            }
+                        }else if(Object.prototype.toString.call(item) == '[object Object]'){
+                        //{"display": 'block', 'width': '2em'}
+                            var k;
+                            for(k in item) node.style[k] = item[k];
+                        }
+                        //array will be ignored
+                    }
+                }
+            }else if(attribute == 'value'){//attribute.value
+                node.value  = value
+            }else{//attribute.other
+                var detailLen   = detail.length - 1
+                    ,valueLen   = value.length
+                    ,attribute  = node.attributes
+                    ,lastItem   = detail[detailLen]
+                    ,i,item
+                    ;
+                for(i=0; i<detailLen; i++){
+                    item    = detail[i];
+                    if(!attribute[item]) attribute[item] = {};
+                    attribute = attribute[item];
+                }
+                while(valueLen--) attribute[lastItem]    = value[valueLen];
+            }
+        }else if(nodeType == TEXT_NODE){
+            //if(node.nodeValue != value) node.nodeValue = value;
+        }
+    }else if(type == "dataset"){
+        var detailLen   = detail.length
+            ,valueLen   = value.length
+            ,key        = detail[0]
+            ,i
+            ;
+        for(i=1; i<detailLen; i++)  key += '-'+detail[i];
+        while(valueLen--) node.setAttribute('data-'+key, value[valueLen])
+    }else if(type == "event"){
+        var valueLen    = value.length
+            ,events     = node.nbEvents = node.nbEvents || []
+            ,eventName  = detail[0]
+            ,item
+            ;
+        //delete old events
+        while(events.length) node.removeEventListener(eventName, events.pop());
+        while(valueLen--){
+            item    = value[valueLen];
+            if(typeof(item) == 'function'){
+                events.push(item);
+                node.addEventListener(eventName, item);
+            }
         }
     }
 }
@@ -602,17 +714,26 @@ ViewPrototype.change    = function(){
 ViewPrototype.refreshListener   = function(){
 
 }
+var models  = [];
 /*
  * =Model
  * @about   keep global unique always
  * */
 function Model(object, property){
-    //todd model must be singleton
-    var self        = this;
+    var len         = models.length
+        ,self       = this
+        ,model
+        ;
+    //model must be singleton
+    while(len--){
+        model   = models[len];
+        if(model.object == object && model.property == property) return model
+    }
     self.object     = object;
     self.property   = property;
     self.bindings   = [];//[target: view|model, callback: render|update]
     self.refreshListener();
+    models.push(self);
 }
 var ModelPrototype  = Model.prototype;
 /*
@@ -641,7 +762,7 @@ ModelPrototype.update   = function(){//model.object[model.property] = value;
  * =Model.prototype.change
  * @about   if model change model.this method will be call
  * */
-ModelPrototype.change   = function(change){
+ModelPrototype.change   = function(){
     var self    = this
         ,bindings   = self.bindings
         ,len        = bindings.length
@@ -649,70 +770,284 @@ ModelPrototype.change   = function(change){
         ;
     while(len--){
         binding = bindings[len];
-        binding.callback.call(binding.target, change.value)
+        binding.callback.call(binding.target)//render
     }
 }
 /*
  * =Observable Array Property
- * */
+ * @about   use observable fallback will be slow in generate ObservableArrayPrototype
+ * *
 function ObservableArrayPrototype(){
-    var len             = 10//99999//http://exodia.net/javascript/2013/06/21/V8%E5%BC%95%E6%93%8E%E5%AF%B9JS%E6%95%B0%E7%BB%84%E7%9A%84%E4%B8%80%E4%BA%9B%E5%AE%9E%E7%8E%B0%E4%BC%98%E5%8C%96.html//Math.pow(2, 32) - 1
+    var len             = 99//99999
+    //http://exodia.net/javascript/2013/06/21/V8%E5%BC%95%E6%93%8E%E5%AF%B9JS%E6%95%B0%E7%BB%84%E7%9A%84%E4%B8%80%E4%BA%9B%E5%AE%9E%E7%8E%B0%E4%BC%98%E5%8C%96.html
+    //Math.pow(2, 32) - 1 will be the max, but it's too slow
         ,self           = this
         ,defineProperty = Object.defineProperty
-        ,descriptor     = {
-            set: function(value){
-                console.log('set [i]',this,value)
-                var self    = this;
-                if(value.flag == "NodeBind_first_set"){
-                    //Object.defineProperty(self, value.index, {value: value.value})
-                    self[value.index] = value.value;
-                    /*self.length = {
-                        "type"      : "NodeBind_refresh_length"
-                        ,"value"    : self.length
-                    }*/
+        ;
+    //console.time('observable Array Prototype');
+    //console.profile('observable Array Prototype');
+    while(len--) defineProperty(self, len, {
+        set    : (function(len){
+            return function(value){
+                console.log('set [i]',this,value,value.index,value.value)
+                this.length = {
+                    'flag'      : 'NodeBind_new_item'
+                    ,'length'   : len + 1
+                    ,'value'    : value
                 }
             }
-        };
-    while(len--) defineProperty(self, len, descriptor);
+        })(len)
+    });
+    //console.profileEnd('observable Array Prototype');
+    //console.timeEnd('observable Array Prototype');
 }
 ObservableArrayPrototype.prototype   = Array.prototype;
 ObservableArrayPrototype.constructor = Array;
 /*
  * =Observable Array
- * */
+ * *
 function ObservableArray(array, callback){
-    var _length     = array.length
-        ,len        = _length
+    var len         = array.length
+        ,_length    = 0
         ,self       = this
         ,item
         ;
-    self.test = 1;
-    while(len--) self[len]  = {
-        "flag"      : "NodeBind_first_set"
-        ,"index"    : len
-        ,"value"    : array[len]
-    }
-    //array.push.apply(self, arguments);
+
     Object.defineProperty(self, 'length',{
         get: function(){ return _length },
         set: function(value){
-            console.log('set length',value)
+            //console.log('set length',value,value.value)
             var oldLength   = _length;
-            _length = value;
-            callback();
+            if(value.flag && value.flag == 'NodeBind_new_item'){
+                //self[value.length-1] = value.value;
+                var length      = value.length
+                    ,firstSet   = false
+                    ,desc
+                    ;
+                value       = value.value;
+                if(value.flag && value.flag == 'NodeBind_first_set'){
+                    value       = value.value;
+                    firstSet    = true;
+                }
+                desc    = Object.getOwnPropertyDescriptor(self, length-1);
+                if(!(desc && desc.set))
+                Object.defineProperty(self, length-1, {
+                    value           : value
+                    ,writable       : true
+                    ,enumerable     : true
+                    ,configurable   : true
+                })
+                _length = length;
+                if(!firstSet) callback.call(self);
+            }else{
+                _length = value;
+            }
         }
     })
+    while(len--){
+        self[len]  = {
+            "flag"      : "NodeBind_first_set"
+            ,"value"    : array[len]
+        }
+        console.log(len, self, self[len])
+    }
+    console.log(self)
+    //notice new once
+    self.length = array.length
 }
 ObservableArray.prototype   = new ObservableArrayPrototype;
 ObservableArray.constructor = ObservableArrayPrototype;
+//window.ArrayObserve = ArrayObserve;
+/**
 var a = [1,2,4];
-var b = new ObservableArray([1,2,4], function(){
-    console.log('change')
+var b = new ObservableArray(a, function(){
+    console.log(this, 'change')
 });
-//b.push(2);
-//b[5] ="modify";
-//b[9] ="modify";
-console.log(b.length,b)
+console.log(b)
+setTimeout(function(){
+    b[5] = 'new value'
+},300)
+/**/
+
+/*
+ * dirty check with event loop callback inject
+ * /
+
+/*
+ * =check if a and b is equal
+ * */
+function isEqual(a, b) {
+    var p, t;
+    if(typeof a === 'object' && typeof b === 'object'){
+        for (p in a) {
+          if (typeof b[p] === 'undefined') return false;
+          if (b[p] && !a[p]) return false;
+          t = typeof a[p];
+          if (t === 'object' && !isEqual(a[p], b[p])) return false;
+          if (t === 'function' && (typeof b[p] === 'undefined' || a[p].toString() !== b[p].toString()))
+            return false;
+          if (a[p] !== b[p]) return false;
+        }
+        for (p in b)
+          if (typeof a[p] === 'undefined') return false;
+
+        return true;
+    }else return a === b
+};
+/*
+ * =clone
+ * */
+function clone(src){
+    function mixin(dest, source, copyFunc) {
+        var name, s, i, empty = {};
+        for(name in source){
+            // the (!(name in empty) || empty[name] !== s) condition avoids copying properties in "source"
+            // inherited from Object.prototype.  For example, if dest has a custom toString() method,
+            // don't overwrite it with the toString() method that source inherited from Object.prototype
+            s = source[name];
+            if(!(name in dest) || (dest[name] !== s && (!(name in empty) || empty[name] !== s))){
+                dest[name] = copyFunc ? copyFunc(s) : s;
+            }
+        }
+        return dest;
+    }
+
+    if(!src || typeof src != "object" || Object.prototype.toString.call(src) === "[object Function]")
+        // null, undefined, any non-object, or function
+        return src; // anything
+
+    //if(src.nodeType && "cloneNode" in src){
+    //    // DOM Node
+    //    return src.cloneNode(true); // Node
+    //}
+    if(src instanceof Date){
+        // Date
+        return new Date(src.getTime()); // Date
+    }
+    if(src instanceof RegExp){
+        // RegExp
+        return new RegExp(src);   // RegExp
+    }
+    var r, i, l;
+    if(src instanceof Array){
+        // array
+        r = [];
+        for(i = 0, l = src.length; i < l; ++i){
+            if(i in src){
+                r.push(clone(src[i]));
+            }
+        }
+        // we don't clone functions for performance reasons
+        //      }else if(d.isFunction(src)){
+        //          // function
+        //          r = function(){ return src.apply(this, arguments); };
+    }else{
+        // generic objects
+        r = src.constructor ? new src.constructor() : {};
+    }
+    return mixin(r, src, clone);
+}
+/*
+ * =dirty check
+ * @about   because dirty is slow, only use it for polyfill
+ * */
+var watchList   = [];
+function dirtyWatch(object, property, callback){
+    watchList.push({
+        "object"    : object
+        ,"property" : property
+        ,"callback" : callback
+        ,"clone"    : clone(object[property])
+    });
+}
+/*
+ * =check
+ * */
+function check(){
+    //console.log('i am check',watchList)
+    var len = watchList.length
+        ,item,obj
+        ;
+    while(len--){
+        item    = watchList[len];
+        obj     = item.object[item.property];
+        if ( !isEqual(item.clone, obj) ){
+            item.clone  = clone(obj);
+            item.callback();
+        }
+    }
+}
+/*
+ * =after
+ * use aop for func
+ * */
+function after( self, func ){
+    return function(){
+        var _this       = this
+            ,_arguments = arguments
+            ;
+        try{
+            self.apply( _this, _arguments);
+        }finally{
+            func.apply( _this, _arguments);
+        }
+    }
+}
+/*
+ * =inject callback argument with check function
+ * */
+_o = [];
+_a = [];
+function checkAfterCallback(object, property){
+    var origin  = object[property];
+    object[property]    = function(){
+        var args    = arguments
+            ,len    = args.length
+            ,arg,_callback,callback
+            ;
+        //handle funtion argument
+        while(len--){
+            arg = args[len];
+            if(typeof(arg) == 'function') {
+                _callback   = args[len];
+                callback    = after(arg, check);
+                args[len]   = callback;
+                //because callback is a function pointer, so keep the link of origin and after
+                //which is useful when overwrite built-in method
+                //because different node can own same event callback
+                //an array is needed
+                callback.nbOriginCallback   = callback.nbOriginCallback || [];
+                callback.nbOriginCallback.push( _callback );
+                _callback.nbAfterCallback   = _callback.nbAfterCallback || [];
+                _callback.nbAfterCallback.push( callback );
+            }
+        }
+        origin.apply(this, args);
+    }
+}
+
+//timers inject
+checkAfterCallback(window,'setTimeout')
+checkAfterCallback(window,'setInterval')
+//events inject
+checkAfterCallback(EventTarget.prototype, 'addEventListener')
+var proto                   = EventTarget.prototype
+    _removeEventListener    = proto.removeEventListener
+    ;
+proto.removeEventListener   = after(_removeEventListener, function(eventName, callback){
+    var nbAfter = callback.nbAfterCallback
+        ,len    = nbAfter.length
+        ;
+    //as one origin event callback may has many inject callback, but each inject callback match to only one node, others will be ignore, for example
+    //NodeBind($('#event'), 'event.click', data.event, '{{click}}')
+    //NodeBind($('#event1'), 'event.click', data.event, '{{click}}')
+    //data.event.click will has two inject after callback, but each of them match unique node
+
+    while(len--) _removeEventListener.call(this, eventName, nbAfter[len]);
+    check();
+})
+//ajax
+
 
 /*
  * =Model.prototype.refreshListener
@@ -725,51 +1060,46 @@ ModelPrototype.refreshListener  = function(){
         ,object     = self.object
         ,property   = self.property
         ,_value     = object[property]
-        ,array,len,item
         ;
+    if(property == '') return//only watch definate property
+    //checkList.push({
+    //    "object"            : object
+    //    ,"property"         : property
+    //    ,"clone"            : objectClone(object[property])
+    //    ,"dirtyCallback"    : function(){ self.change.call(self) }
+    //})
     //listen object[property] = new value
     //console.log(self,object, property)
     if(typeof(object) == "object" && property != null && property != undefined){
-        Object.defineProperty(object, property, {
+        function observeArray(object, property){//observe object[property][i]
+            //todo if type of object[property] is Array, listen object[property][i]'s new and delete
+            //use presudo array length getter setter
+            //no need to watch object[property][i]'s modify, because child bind will cause defineProperty for object[property][i], so ArrayObserve's 9999 max limit can be avoid
+            if( Object.prototype.toString.call( object[property] ) === '[object Array]' ){
+                //replace with observable array
+                //observable array run slow
+                //object[property] = new ObservableArray( value, function(){
+                //    self.change();
+                //});
+                //use dirty check for array new and delete
+                dirtyWatch( object[property], 'length', function(){
+                    self.change.call(self)
+                })
+            }
+        }
+        Object.defineProperty(object, property, {//observe object[property]
             get     : function(){
                 return _value
             },
             set    : function(value){
                 var oldValue    = _value
                 _value          = value;
-                self.change({
-                    "object"    : object
-                    ,"property" : property
-                    ,"oldValue" : oldValue
-                    ,"value"    : value
-                })
-            }
+                observeArray(object, property);
+                self.change();
+            },
+            configurable : true
         })
-        //todo if type of object[property] is Array, listen object[property][i]'s new and delete
-        //use presudo array length getter setter
-        //no need to watch object[property][i]'s modify, because child bind will cause defineProperty for object[property][i], so ArrayObserve's 9999 max limit can be avoid
-        array   = _value;
-        if( Object.prototype.toString.call( array ) === '[object Array]' ){
-            //create observable array
-            
-            //no need to watch [i]
-            /*len = array.length;
-            while(len--){
-                (function(){
-                    var _value  = array[len];
-                    Object.defineProperty(array, len, {
-                        get     : function(){ return _value }
-                        ,set    : function(value){
-                            console.log('set')
-                            var oldValue    = _value;
-                            _value          = value;
-                        }
-                    })
-                    console.log(array)
-                })()
-            }*/
-        }
-
+        observeArray(object, property);
     }
 }
 /*
@@ -870,10 +1200,15 @@ BindingsPrototype.getViews  = function(model){
 function NodeBind(nodes, directive, scope, template){
     var nodesLen,node,views,view,objProps,objProp,len,model;
     if(!nodes.length) nodes = [nodes];
-    if(!template && typeof(scope) == 'string'){//NodeBind(node(s), 'directive', template);
-        template    = scope;
-        scope       = undefined;
+    if(!template ){
+        if( typeof scope == 'string'){//NodeBind(node(s), 'directive', template);
+            template    = scope;
+            scope       = undefined;
+        }else{//NodeBind(node(s), 'scope', scope)
+            template    = '';
+        }
     }
+    //if scope isn't empty, scope will be stored in view.scope as private scope
     nodesLen    = nodes.length;
     while(nodesLen--) NodeBind.core(nodes[nodesLen], directive, scope, template);
 }
