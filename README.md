@@ -17,10 +17,9 @@ this library use property assessor for exist property and dirty watch for others
                                 +----------+  +----------------+  +---------+         +---+
     event loop:                      |               |                  |              |||
                                      v               v                  v              vvv
-      -<-[javascript statement][timer callback][event callback][http request callback][...]-<-
-    /                                                                                          \
-    \                                                                                          /
-      ----------------------------------------------------------------------------------------
+      --<-[javascript statement][timer callback][event callback][http request callback][...]-<--
+    /                                                                                            \
+    \____________________________________________________________________________________________/
 
 ###callback inject
 
