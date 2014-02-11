@@ -4,8 +4,6 @@
 
 this library use defineProperty for exist property and dirty watch for others, dirty watch will inject event loop callback to check dirty.
 
-##Usage
-
 ##concepts
 
 ###scope
@@ -108,5 +106,137 @@ this library use defineProperty for exist property and dirty watch for others, d
                               \           /
                                 ---------
 
+##Usage
+
+###built-in directive
+
+* textContent
+* attributes
+* dataset
+* event
+* scope
+* repeat
+
+
+
+####textContent directive
+
+    @about   most usable directive, {{}} need for template parse, object is the scope of template,
+             if it's undefined , it will search the parent element, top is window.
+    @usage   ElementBind(element(s), 'directive', pathScope, 'template');
+
+    NodeBind($('#textContent'), 'textContent', data, '{{obj.path[0].to[0].value}}');
+    NodeBind($('#textContent1'), 'textContent', data.obj, '{{path[0].to[0].value}} and {{value}}');
+    NodeBind($('#textContent2'), 'textContent', data.obj.path[0].to[0], '{{value}}');
+
+
+
+####attributes directive
+
+    @about   it will change the node's attribute,
+             if directive is attribute.class and template binding data is Array,
+             Array.join(' ') will be called before.
+             if directive is attribute.style and template binding data is Object,
+             Object will be rendered to "display: block;" like string.
+             if directive is attribute.style, only the given style will be cover, others will remain
+             other attribute will refer to original node.attributes
+             always two way binding, multi template will be the same, always match the template.
+    @usage   NodeBind(node(s), 'directive', pathScope, 'template');
+
+    NodeBind($('#attributeId'), 'attribute.id', data.attribute, '{{id}}');
+    NodeBind($('#attributeClass'), 'attribute.class', data.attribute, '{{class.string}}');
+    NodeBind($('#attributeClass1'), 'attribute.class', data.attribute, '{{class.array}}');
+    NodeBind($('#attributeClass2'), 'attribute.class', data.attribute, '{{class2}}');
+    NodeBind($('#attributeStyle'), 'attribute.style', data.attribute, '{{style.string}}');
+    NodeBind($('#attributeStyle1'), 'attribute.style', data.attribute, '{{style.object}}');
+    NodeBind($('#attributeStyleTop'), 'attribute.style.top', data.attribute.styleTop, '{{top}}');
+    NodeBind($('#attributeValue'), 'attribute.value', data.attribute, '{{value}}');
+    NodeBind($('#attributeCustom'), 'attribute.custom.define', data.attribute, '{{custom}}');
+
+
+####dataset directive
+
+    @about   dataset.data.set.content will point to attribute data-data-set-content
+    @usage   ElementBind(element(s), directive, pathScope, 'template');
+
+    NodeBind($('#dataset'), 'dataset.data.set.content', data.dataset, '{{foo}}');
+
+
+
+####event binding
+
+    @about   it will bind event and will fixed some problem on different browsers,
+             prefix free is supported in directive.
+             if property is undefined, absolute event will be binded,
+             property is relative.
+             target event will be {{}}
+             as event callback must be function, string template will be ignore,
+             for example: '{{click}} click1 {{click2}}' --> [path,'click1',path]
+             'click1' will be ignored
+    @usage   ElementBind(element(s), 'directive', propertyScope, 'property');
+
+    NodeBind($('#event'), 'event.click', data.event, '{{click}}');//will watch data.event.click
+    //NodeBind($('#event1'), 'event.click', data.event.click);//keep data.event.click unwatch
+    NodeBind($('#event2'), 'event.click', data.event, '{{click}}{{click2}}');
+    NodeBind($('#event3'), 'event.transitionEnd', data.event, 'transitionEnd');
+
+
+####scope
+
+    @about   it will set model for element, and set element model will trigger scopeBinding,
+             if parent element binded a scope, child binding will inhert it.
+             it's a invisible directive, so no need for userdefined
+             root scope is window.
+    @usage   scope:  ElementBind(element(s), 'directive', object);
+             child:  ElementBind(element(s), 'directive', 'template');
+
+    NodeBind($('#scope'), 'scope', data, '{{scope}}');//will watch data.scope
+    //NodeBind($('#scope'), 'scope', data.scope);//keep data.scope unwatch
+    NodeBind($('#scopeItem'), 'textContent', '{{path.to.data}}');
+
+
+####repeat
+
+    @about   it will repeat the element and bind the child bindings for new element,
+             each repeat element will own a scope,
+    @usage   NodeBind(element(s), 'directive', scope, 'template')
+
+    NodeBind($('.repeat'), 'repeat', data, '{{arr}}');//watch data.arr
+    NodeBind($('.repeat'), 'repeat', data.arr);//keep data.arr unwatch
+    NodeBind($('.repeat .textContent'), 'textContent', '{{$index}}')
+    NodeBind($('.repeat .textContent1'), 'textContent', '{{$index}}')
+
+
+####nodeValue
+
+    @about   actually, above directive is use for element, and this directive test textNode
+             NodeBind(element(s), 'textContent', scope, 'template') will overwrite the children
+             of element.
+
+    NodeBind($('#textNode')[0].childNodes, 'nodeValue', data, '{{obj.path[0].to[0].value}}');
+
+
+####custom binding (todo)
+
+  @about    all directives will turn to call this function
+            use for custom directive
+
+    NodeBind.binding = function(element, directive, object, template){//custom bind for follow use
+        if(directive == 'repeat'){
+            console.log('hi')
+            //handle
+        }else ElementBind.prototype.bind.apply(this, arguments);
+    }
+
+
+####unbind (todo)
+
+    @about   ElementBind will return a binding which can be use in ElementBind.unbind
+
+    var bindId  = ElementBind($('#unbind'), 'textContent', data.textContent.path[0].to[0], 'value');
+    ElementBind.unbind(bindId);
+
+
 ###example
     see demo/
+
