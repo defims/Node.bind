@@ -88,7 +88,7 @@ this library use defineProperty for exist property and dirty watch for others, d
     |           data-bind-repeat=""                                 |
     |       >elementArray</li>                                      |
     |   </ul>                                                       |
-    +---------------------------------------------------------------+
+    +-------------------------------+-------------------------------+
                                     |
                                 generate
                                     |
@@ -98,13 +98,13 @@ this library use defineProperty for exist property and dirty watch for others, d
                                  compile
                                     |
                                     V
-                                ---------
-                              /           \
-                             |             v
-                            model        view
-                             ^             |
-                              \           /
-                                ---------
+                            ----view.render----
+                          /                     \
+                         |                       v
+                        model                  view
+                         ^                       |
+                          \                     /
+                            ----model.update---
 
 ##Usage
 
