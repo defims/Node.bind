@@ -52,6 +52,7 @@
         <div class='textContent'></div>
         <div class='textContent1'>*</div>
     </div>
+    <div id='textNode'>textNode</div>
 
 <div id='elementBoolean'></div>
 <div id='elementNumber'></div>
@@ -213,6 +214,13 @@ NodeBind($('.repeat .textContent'), 'textContent', '{{$index}}')
 NodeBind($('.repeat .textContent1'), 'textContent', '{{$index}}')
 /**/
 
+/*
+ * =nodeValue
+ * @about   actually, above directive is use for element, and this directive test textNode
+ *          NodeBind(element(s), 'textContent', scope, 'template') will overwrite the children
+ *          of element.
+ */
+//NodeBind($('#textNode')[0].childNodes, 'nodeValue', data, '{{obj.path[0].to[0].value}}');
 
 /*
  * = todo custom binding
@@ -253,7 +261,7 @@ ElementBind.unbind(bindId);
 //NodeBind(document.getElementById('elementNumber')).bind('data.num');
 /**/
 setTimeout(function(){
-    //data.obj.path[0].to[0].value = 'modify content';
+    data.obj.path[0].to[0].value = 'modify content';
     //data.arr[0]     = 3;
     //data.arr[4]     = 4;
     //data.arr[9]     = 9;

@@ -468,7 +468,7 @@ ViewPrototype.render    = function(){//according to directive.type,render view.
             NodeBind.setTreeScope(node, value);//for absolute scope
         }
     }else if(type == "repeat"){
-        value   = value[0];
+        value   = value[0];//todo multi template
         var len         = value.length
             ,instances  = node.nbInstances  = node.nbInstances || []
             ,i,item,newNode
@@ -640,6 +640,13 @@ ViewPrototype.render    = function(){//according to directive.type,render view.
                 events.push(item);
                 node.addEventListener(eventName, item);
             }
+        }
+    }else if(type == "nodevalue"){
+        value   = value.join('');
+        if(nodeType == ELEMENT_NODE){
+            if(node.textContent != value) node.nodeValue    = value;
+        }else if(nodeType == TEXT_NODE){
+            if(node.nodeValue != value) node.nodeValue = value;
         }
     }
 }
