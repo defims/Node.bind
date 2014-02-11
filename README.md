@@ -240,6 +240,12 @@ this library use defineProperty for exist property and dirty watch for others, d
     var bindId  = ElementBind($('#unbind'), 'textContent', data.textContent.path[0].to[0], 'value');
     ElementBind.unbind(bindId);
 
+####utility
+
+#####NodeBind.walkTree
+#####NodeBind.core
+#####NodeBind.setTreeScope
+
 
 ##example
     see demo/

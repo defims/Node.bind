@@ -1347,7 +1347,7 @@ NodeBind.setTreeScope   = function(node, scope){
     });
 }
 //NodeBind.bindings   = new Bindings;
-NodeBind.utility    = utility;
+//NodeBind.utility    = utility;
 /*
 NodeBind.compile    = function(element){
     var children    = element.getElementsByTagName("*")
