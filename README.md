@@ -2,9 +2,30 @@
 
 ##How it works
 
-this library use defineProperty for exist property and dirty watch for others, dirty watch will inject event loop callback to check dirty.
+this library use property assessor for exist property and dirty watch for others, dirty watch will inject event loop callback to check dirty.
 
 ##concepts
+
+###assessor
+
+    defineProperty is use for exist property , after compile NodeBind to model, model.refreshListener will be call, and defineProperty will be apply to the model.
+
+###event loop
+
+                                +----------+  +----------------+  +---------+         +---+
+    threads:                    |  timer   |  |  event trigger |  |  ajax   |         |...|
+                                +----------+  +----------------+  +---------+         +---+
+    event loop:                      |               |                  |              |||
+                                     v               v                  v              vvv
+      -<-[javascript statement][timer callback][event callback][http request callback][...]-<-
+    /                                                                                          \
+    \                                                                                          /
+      ----------------------------------------------------------------------------------------
+
+###callback inject
+
+this library use aop(aspect oriented programming) in callback inject, so when callback fire, a dirty check function can be call.
+
 
 ###scope
 
