@@ -1,0 +1,77 @@
+<!doctype html>
+<head>
+    <script src="../Node.bind.js"></script>
+</head>
+<body>
+    <div
+        data-bind-textContent="{{obj.path[0].to[0].value}}"
+        data-bind-attribute-id="{{id}}"
+        data-bind-attribute-class="{{$class}}"
+        data-bind-attribute-style="{{$style}}"
+        data-bind-attribute-style-top="2em"
+        data-bind-attribute-custom-define="custom define"
+        data-bind-dataset-a-b="dataset test"
+        data-bind-event-click="{{click}}"
+        data-bind-scope=""
+    ></div>
+    <input
+        data-bind-attribute-value=""
+    />
+    <ul>
+        <li id='test'
+            data-bind-repeat="{{list}}"
+            data-bind-attribute-class="{{$index}}"
+        >
+            {{$index}}
+        </li>
+    </ul>
+<script>
+    obj = {
+        path: [{
+            to: [{
+                value: 'textContent'
+            }]
+        }]
+    };
+    click   = function(){
+        console.log('click')
+    }
+    id      = 'id';
+    $class  = 'class';
+    $style  = 'background: lightblue'
+    var list = [
+        'apple'
+        ,'google'
+        ,'microsoft'
+    ];
+    setTimeout(function(){
+        list[0] = 'samsung';
+        obj.path[0].to[0].value = 'modify textContent';
+    },1000)
+</script>
+<script>
+    //walk all nodes inclode repeat generate nodes
+    NodeBind.walkTree( document.body, function(){
+        var node            = this
+            ,ELEMENT_NODE   = 1
+            ,TEXT_NODE      = 3
+            ,nodeType       = node.nodeType
+            ;
+        if(nodeType == ELEMENT_NODE){
+            var attributes  = node.attributes
+                ,len        = attributes.length
+                ,attribute
+                ;
+            while(len--){
+                attribute   = attributes[len];
+                if(attribute.nodeName.match(/data-bind-(.*)/gim))
+                    NodeBind(node, RegExp.$1.replace(/-/gim, '.'), attribute.nodeValue);
+            }
+        }else if(nodeType == TEXT_NODE){
+            var nodeValue   = node.nodeValue;
+            if(nodeValue.match(/\{\{.*\}\}/im)) NodeBind(node, 'nodeValue', nodeValue);
+        }
+    })
+</script>
+</body>
+</html>

@@ -55,9 +55,11 @@ this library use property assessor for exist property and dirty watch as fallbac
 ###scope
 
 scope is mapping to markup.
+
 the scopes of scope and repeat inhert form their parent element, because they define the scope.
 root scope is window, it means define varible directly will affect the root scope.
 others inhert form the nearest parentNode's scope.
+
 chain inhert scope is nice (todo).
 
 ####markup statement example
@@ -340,4 +342,6 @@ node data store in dom with nb prefix like:
 ##roadmap
 
 * view <=> model <=> model
+* Object.observe as listener
+* directly view modify support
 * inhert scope
