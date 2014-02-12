@@ -155,48 +155,48 @@ node data store in dom with nb prefix like:
 
 ##process:
 
-    +------------------------------------------------------------+
-    |   <div                                                     |\
-    |       data-bind-textContent="{{obj.path[0].to[0].value}}"  | \
-    |       data-bind-attribute-id=""                            +--+
-    |       data-bind-attribute-class=""                            |
-    |       data-bind-attribute-style=""                            |
-    |       data-bind-attribute-style-top=""                        |
-    |       data-bind-attribute-custom-define=""                    |
-    |       data-bind-dataset-a-b=""                                |
-    |       data-bind-event-click=""                                |
-    |   ></div>                                                     |
-    |   <input                                                      |
-    |       data-bind-attribute-value=""                            |
-    |   />                                                          |
-    |   <ul>                                                        |
-    |       <li                                                     |
-    |           data-bind-repeat=""                                 |
-    |       >elementArray</li>                                      |
-    |   </ul>                                                       |
-    +-------------------------------+-------------------------------+
-                                    |
-                                generate
-                                    |
-                                    V
-                NodeBind(node(s), 'directive', scope, 'template')
-                                    |
-                                 compile
-                                    |
-                                    V
-                             ->----->----->--
-                          /                    \
-                       change                render
-                         |                      |
-                         |                      v
-                    +---------+            +--------+
-                    |  model  |            |  view  |
-                    +---------+            +--------+
-                         ^                      |
-                         |                      |
-                       update                 change
-                          \                    /
-                             --<----<-----<--
+            +------------------------------------------------------------+
+            |   <div                                                     |\
+            |       data-bind-textContent="{{obj.path[0].to[0].value}}"  | \
+            |       data-bind-attribute-id=""                            +--+
+            |       data-bind-attribute-class=""                            |
+            |       data-bind-attribute-style=""                            |
+            |       data-bind-attribute-style-top=""                        |
+            |       data-bind-attribute-custom-define=""                    |
+            |       data-bind-dataset-a-b=""                                |
+            |       data-bind-event-click=""                                |
+            |   ></div>                                                     |
+            |   <input                                                      |
+            |       data-bind-attribute-value=""                            |
+            |   />                                                          |
+            |   <ul>                                                        |
+            |       <li                                                     |
+            |           data-bind-repeat=""                                 |
+            |       >elementArray</li>                                      |
+            |   </ul>                                                       |
+            +-------------------------------+-------------------------------+
+                                            |
+                                        generate
+                                            |
+                                            V
+                        NodeBind(node(s), 'directive', scope, 'template')
+                                            |
+                                         compile
+                                            |
+                                            V
+                                     -->---->----->--
+                                  /                    \
+                               change                render
+                                 |                      |
+                                 |                      v
+                            +---------+            +--------+
+                            |  model  |            |  view  |
+                            +---------+            +--------+
+                                 ^                      |
+                                 |                      |
+                               update                 change
+                                  \                    /
+                                     --<----<-----<--
 
 ##Usage
 
