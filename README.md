@@ -2,7 +2,53 @@
 
 ##How it works
 
-this library use property assessor for exist property and dirty watch for others, dirty watch will inject event loop callback to check dirty.
+this library use property assessor for exist property and dirty watch as fallback, dirty watch will inject event loop callback to check dirty.
+
+##process:
+
+    +------------------------------------------------------------+
+    |   <div                                                     |\
+    |       data-bind-textContent="{{obj.path[0].to[0].value}}"  | \
+    |       data-bind-attribute-id=""                            +--+
+    |       data-bind-attribute-class=""                            |
+    |       data-bind-attribute-style=""                            |
+    |       data-bind-attribute-style-top=""                        |
+    |       data-bind-attribute-custom-define=""                    |
+    |       data-bind-dataset-a-b=""                                |
+    |       data-bind-event-click=""                                |
+    |   ></div>                                                     |
+    |   <input                                                      |
+    |       data-bind-attribute-value=""                            |
+    |   />                                                          |
+    |   <ul>                                                        |
+    |       <li                                                     |
+    |           data-bind-repeat=""                                 |
+    |       >elementArray</li>                                      |
+    |   </ul>                                                       |
+    +-------------------------------+-------------------------------+
+                                    |
+                                generate
+                                    |
+                                    V
+                NodeBind(node(s), 'directive', scope, 'template')
+                                    |
+                                 compile
+                                    |
+                                    V
+                             -->---->----->--
+                          /                    \
+                       change                render
+                         |                      |
+                         |                      v
+                    +---------+            +--------+
+                    |  model  |            |  view  |
+                    +---------+            +--------+
+                         ^                      |
+                         |                      |
+                       update                 change
+                          \                    /
+                             --<----<-----<--
+
 
 ##concepts
 
@@ -38,7 +84,7 @@ the magic observer is assessor and callback inject.
 
 ###assessor
 
-    defineProperty is use for exist property , after compile NodeBind to model, model.refreshListener will be call, and defineProperty will be apply to the model.
+defineProperty is use for exist property , after compile NodeBind to model, model.refreshListener will be call, and defineProperty will be apply to the model.
 
 ###event loop
 
@@ -153,50 +199,6 @@ node data store in dom with nb prefix like:
  * nbInstances
  * nbPrototype
 
-##process:
-
-            +------------------------------------------------------------+
-            |   <div                                                     |\
-            |       data-bind-textContent="{{obj.path[0].to[0].value}}"  | \
-            |       data-bind-attribute-id=""                            +--+
-            |       data-bind-attribute-class=""                            |
-            |       data-bind-attribute-style=""                            |
-            |       data-bind-attribute-style-top=""                        |
-            |       data-bind-attribute-custom-define=""                    |
-            |       data-bind-dataset-a-b=""                                |
-            |       data-bind-event-click=""                                |
-            |   ></div>                                                     |
-            |   <input                                                      |
-            |       data-bind-attribute-value=""                            |
-            |   />                                                          |
-            |   <ul>                                                        |
-            |       <li                                                     |
-            |           data-bind-repeat=""                                 |
-            |       >elementArray</li>                                      |
-            |   </ul>                                                       |
-            +-------------------------------+-------------------------------+
-                                            |
-                                        generate
-                                            |
-                                            V
-                        NodeBind(node(s), 'directive', scope, 'template')
-                                            |
-                                         compile
-                                            |
-                                            V
-                                     -->---->----->--
-                                  /                    \
-                               change                render
-                                 |                      |
-                                 |                      v
-                            +---------+            +--------+
-                            |  model  |            |  view  |
-                            +---------+            +--------+
-                                 ^                      |
-                                 |                      |
-                               update                 change
-                                  \                    /
-                                     --<----<-----<--
 
 ##Usage
 
