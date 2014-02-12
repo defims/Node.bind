@@ -6,20 +6,50 @@ this library use property assessor for exist property and dirty watch for others
 
 ##concepts
 
+###scope
+
+scope is mapping to markup.
+the scopes of scope and repeat inhert form their parent element, because they define the scope.
+root scope is window, it means define varible directly will affect the root scope.
+others inhert form the nearest parentNode's scope.
+chain inhert scope is nice (todo).
+
+####markup statement example
+
+    +---------------------------------------------------------------------------------------+
+    |<-----------------+                                                                    |
+    |   +--------------|----------------------------------------------------------------+   |
+    |   |   <li data-repeat="{{array}}" data-attr-src="{{$index.foo.bar}}.jpg"></li>    |   |
+    |   +-------------------------------------------------------------------------------+   |
+    |<------------------+                                                                   |
+    |   +---------------|---------------------------+                                       |
+    |   |   <div data-scope="{{object}}">           |                                       |
+    |   |       {{a.b.c}} + {{a.b.d}} = {{a.b.e}}   |                                       |
+    |   |       <span>{{a.b.f}}</span>              |                                       |
+    |   |   </div>                                  |                                       |
+    |   +-------------------------------------------+                                       |
+    +---------------------------------------------------------------------------------------+
+
+###model
+
+model is javascript varible, it store object and property inside for observe.
+it also provide method to refresh listener when object or property change.
+the magic observer is assessor and callback inject.
+
 ###assessor
 
     defineProperty is use for exist property , after compile NodeBind to model, model.refreshListener will be call, and defineProperty will be apply to the model.
 
 ###event loop
 
-                                +----------+  +----------------+  +---------+         +---+
-    threads:                    |  timer   |  |  event trigger |  |  ajax   |         |...|
-                                +----------+  +----------------+  +---------+         +---+
-    event loop:                      |               |                  |              |||
+                                +----------+  +----------------+  +----------+        +---+
+               threads          |  timer   |  |  event trigger |  |   ajax   |        |...|
+                                +----------+  +----------------+  +----------+        +---+
+                                     |               |                  |              |||
                                      v               v                  v              vvv
       -<-[javascript statement][timer callback][event callback][http request callback][...]-<-
     /                                                                                          \
-    \                                                                                          /
+    \                                      event loop                                          /
       ----------------------------------------------------------------------------------------
 
 ###callback inject
@@ -28,24 +58,16 @@ this library use aop(aspect oriented programming) in callback inject, so when ca
 
       --<--[javascript statement][timer|event|http request callback + dirty check][...]--<--
 
-###scope
-
-    +-------------------------------------------------------------------------------+
-    |   <li data-repeat="{{array}}" data-attr-src="{{$index.foo.bar}}.jpg"></li>    |
-    +-------------------------------------------------------------------------------+
-    +-------------------------------------------+
-    |   <div><!--node.nbScope=object-->         |
-    |       {{a.b.c}} + {{a.b.d}} = {{a.b.e}}   |
-    |       <span>{{a.b.f}}</span>              |
-    |   </div>                                  |
-    +-------------------------------------------+
-
 ###view
+
+####markup statement example
 
         +--------------------------+    +----------------------------------------+
     <li | data-repeat="{{repeat}}" |    | data-attr-src="{{$index.foo.bar}}.jpg" | ></li>
         +--------------------------+    +----------------------------------------+
-    <div><!--node.nbScope=object-->
+         +-------------------------+
+    <div | data-scope="{{object}}" | >
+         +-------------------------+
       +-----------------------------------+
       | {{a.b.c}} + {{a.b.d}} = {{a.b.e}} |
       +-----------------------------------+
@@ -54,12 +76,34 @@ this library use aop(aspect oriented programming) in callback inject, so when ca
             +---------+
     </div>
 
+this library just provide the NodeBind method for render, and the markup is just an example to explain what a view is.
+
+####directive
+
+directive tell view how to render
+
+#####built-in directives
+
+* scope
+* repeat
+* textContent
+* attribute
+* dataset
+* event
+* nodeValue
+
+#####custom directive (todo)
+
 ###template
+
+####markup statement example
 
                      +---------+                 +----------------------+
     <li data-repeat="|{{array}}|" data-attr-src="|{{$index.foo.bar}}.jpg|" ></li>
                      +---------+                 +----------------------+
-    <div><!--node.nbScope=object-->
+                     +----------+
+    <div data-scope="|{{object}}|" >
+                     +----------+
       +-----------------------------------+
       | {{a.b.c}} + {{a.b.d}} = {{a.b.e}} |
       +-----------------------------------+
@@ -70,10 +114,14 @@ this library use aop(aspect oriented programming) in callback inject, so when ca
 
 ###path
 
+####markup statement example
+
                        +-----+                     +--------------+
     <li data-repeat="{{|array|}}" data-attr-src="{{|$index.foo.bar|}}.jpg" ></li>
                        +-----+                     +--------------+
-    <div><!--node.nbScope=object-->
+                       +------+
+    <div data-scope="{{|object|}}" >
+                       +------+
           +-----+       +-----+         +-----+
         {{|a.b.c|}} + {{|a.b.d|}}   = {{|a.b.e|}}
           +-----+       +-----+         +-----+
@@ -82,12 +130,28 @@ this library use aop(aspect oriented programming) in callback inject, so when ca
                 +-----+
     </div>
 
+####built-in code
+
+* $index $index is use as repeat inde
+
+####filter (todo)
+
+path can own filter
+
 ##node data
+
+node data store in dom with nb prefix like:
+
+    document.getElementById('scope').nbScope
+
+###built-in node data
 
  * nbScope
  * nbViews
  * nbModels
  * nbEvents
+ * nbInstances
+ * nbPrototype
 
 ##process:
 
@@ -120,7 +184,7 @@ this library use aop(aspect oriented programming) in callback inject, so when ca
                                  compile
                                     |
                                     V
-                            -->----->----->--
+                             ->----->----->--
                           /                    \
                        change                render
                          |                      |
@@ -142,16 +206,12 @@ this library use aop(aspect oriented programming) in callback inject, so when ca
 
 ###compile
 
-####built-in directives
+    compile use the global api NodeBind like:
 
-* textContent
-* attributes
-* dataset
-* event
-* scope
-* repeat
+    NodeBind(node(s), 'directive', scope, 'template');
+    NodeBind(node(s), 'directive', 'template');
 
-#####textContent
+######textContent
 
     @about   most usable directive, {{}} need for template parse, object is the scope of template,
              if it's undefined , it will search the parent element, top is window.
@@ -161,9 +221,7 @@ this library use aop(aspect oriented programming) in callback inject, so when ca
     NodeBind($('#textContent1'), 'textContent', data.obj, '{{path[0].to[0].value}} and {{value}}');
     NodeBind($('#textContent2'), 'textContent', data.obj.path[0].to[0], '{{value}}');
 
-
-
-#####attributes
+######attribute
 
     @about   it will change the node's attribute,
              if directive is attribute.class and template binding data is Array,
@@ -186,7 +244,7 @@ this library use aop(aspect oriented programming) in callback inject, so when ca
     NodeBind($('#attributeCustom'), 'attribute.custom.define', data.attribute, '{{custom}}');
 
 
-#####dataset
+######dataset
 
     @about   dataset.data.set.content will point to attribute data-data-set-content
     @usage   ElementBind(element(s), directive, pathScope, 'template');
@@ -195,7 +253,7 @@ this library use aop(aspect oriented programming) in callback inject, so when ca
 
 
 
-#####event
+######event
 
     @about   it will bind event and will fixed some problem on different browsers,
              prefix free is supported in directive.
@@ -213,7 +271,7 @@ this library use aop(aspect oriented programming) in callback inject, so when ca
     NodeBind($('#event3'), 'event.transitionEnd', data.event, 'transitionEnd');
 
 
-#####scope
+######scope
 
     @about   it will set model for element, and set element model will trigger scopeBinding,
              if parent element binded a scope, child binding will inhert it.
@@ -227,7 +285,7 @@ this library use aop(aspect oriented programming) in callback inject, so when ca
     NodeBind($('#scopeItem'), 'textContent', '{{path.to.data}}');
 
 
-#####repeat
+######repeat
 
     @about   it will repeat the element and bind the child bindings for new element,
              each repeat element will own a scope,
@@ -239,7 +297,7 @@ this library use aop(aspect oriented programming) in callback inject, so when ca
     NodeBind($('.repeat .textContent1'), 'textContent', '{{$index}}')
 
 
-#####nodeValue
+######nodeValue
 
     @about   actually, above directive is use for element, and this directive test textNode
              NodeBind(element(s), 'textContent', scope, 'template') will overwrite the children
@@ -248,7 +306,7 @@ this library use aop(aspect oriented programming) in callback inject, so when ca
     NodeBind($('#textNode')[0].childNodes, 'nodeValue', data, '{{obj.path[0].to[0].value}}');
 
 
-#####custom binding (todo)
+###custom binding (todo)
 
   @about    all directives will turn to call this function
             use for custom directive
@@ -260,19 +318,18 @@ this library use aop(aspect oriented programming) in callback inject, so when ca
         }else ElementBind.prototype.bind.apply(this, arguments);
     }
 
-
-#####unbind (todo)
+###unbind (todo)
 
     @about   ElementBind will return a binding which can be use in ElementBind.unbind
 
     var bindId  = ElementBind($('#unbind'), 'textContent', data.textContent.path[0].to[0], 'value');
     ElementBind.unbind(bindId);
 
-####utility
+###utility
 
-#####NodeBind.walkTree
-#####NodeBind.core
-#####NodeBind.setTreeScope
+####NodeBind.walkTree
+####NodeBind.core
+####NodeBind.setTreeScope
 
 
 ##example
@@ -280,5 +337,5 @@ this library use aop(aspect oriented programming) in callback inject, so when ca
 
 ##roadmap
 
-view <=> model <=> model
-
+* view <=> model <=> model
+* inhert scope

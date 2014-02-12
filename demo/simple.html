@@ -197,8 +197,9 @@ NodeBind($('#event3'), 'event.transitionEnd', data.event, 'transitionEnd');
  * @usage   scope:  ElementBind(element(s), 'directive', object);
  *          child:  ElementBind(element(s), 'directive', 'template');
  * *
-NodeBind($('#scope'), 'scope', data, '{{scope}}');//will watch data.scope
+//NodeBind($('#scope'), 'scope', data, '{{scope}}');//will watch data.scope
 //NodeBind($('#scope'), 'scope', data.scope);//keep data.scope unwatch
+NodeBind($('#scope'), 'scope', '{{data.scope}}');//relative scope
 NodeBind($('#scopeItem'), 'textContent', '{{path.to.data}}');
 /**/
 
@@ -207,9 +208,10 @@ NodeBind($('#scopeItem'), 'textContent', '{{path.to.data}}');
  * @about   it will repeat the element and bind the child bindings for new element,
  *          each repeat element will own a scope,
  * @usage   NodeBind(element(s), 'directive', scope, 'template')
- *
-NodeBind($('.repeat'), 'repeat', data, '{{arr}}');//watch data.arr
-NodeBind($('.repeat'), 'repeat', data.arr);//keep data.arr unwatch
+ */
+//NodeBind($('.repeat'), 'repeat', data, '{{arr}}');//watch data.arr
+//NodeBind($('.repeat'), 'repeat', data.arr);//keep data.arr unwatch
+NodeBind($('.repeat'), 'repeat', '{{data.arr}}');//relative repeat scope
 NodeBind($('.repeat .textContent'), 'textContent', '{{$index}}')
 NodeBind($('.repeat .textContent1'), 'textContent', '{{$index}}')
 /**/
@@ -262,10 +264,10 @@ ElementBind.unbind(bindId);
 /**/
 setTimeout(function(){
     data.obj.path[0].to[0].value = 'modify content';
-    //data.arr[0]     = 3;
-    //data.arr[4]     = 4;
-    //data.arr[9]     = 9;
-    //data.scope.path.to.data = 'modify data';
+    data.arr[0]     = 3;
+    data.arr[4]     = 4;
+    data.arr[9]     = 9;
+    data.scope.path.to.data = 'modify data';
     //data.attribute.id               = 'changeId';
     //data.attribute.class.string     = 'c1 c2';
     //data.attribute.class.array.push('class3');
