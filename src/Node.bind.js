@@ -644,16 +644,21 @@ ViewPrototype.render    = function(){//according to directive.type,render view.
             }else{//attribute.other
                 var detailLen   = detail.length - 1
                     ,valueLen   = value.length
-                    ,attribute  = node.attributes
-                    ,lastItem   = detail[detailLen]
-                    ,i,item
                     ;
-                for(i=0; i<detailLen; i++){
-                    item    = detail[i];
-                    if(!attribute[item]) attribute[item] = {};
-                    attribute = attribute[item];
+                if(detailLen > 0){//attribute.a.b.c
+                    var attribute   = node.attributes
+                        ,lastItem   = detail[detailLen]
+                        ,i,item
+                        ;
+                    for(i=0; i<detailLen; i++){
+                        item    = detail[i];
+                        if(!attribute[item]) attribute[item] = {};
+                        attribute = attribute[item];
+                    }
+                    while(valueLen--) attribute[lastItem]    = value[valueLen];
+                }else{//attribute.a like attribute.src
+                    while(valueLen--) node.setAttribute(detail[0], value[valueLen]);
                 }
-                while(valueLen--) attribute[lastItem]    = value[valueLen];
             }
         }else if(nodeType == TEXT_NODE){
             //if(node.nodeValue != value) node.nodeValue = value;
@@ -1078,11 +1083,15 @@ function checkAfterCallback(object, property){
 checkAfterCallback(window,'setTimeout')
 checkAfterCallback(window,'setInterval')
 //events inject
-checkAfterCallback(EventTarget.prototype, 'addEventListener')
-var proto                   = EventTarget.prototype
-    _removeEventListener    = proto.removeEventListener
+//get addEventListener's object
+var nbEventTarget           = Node.prototype
+    ,_removeEventListener
     ;
-proto.removeEventListener   = after(_removeEventListener, function(eventName, callback){
+
+if(window.EventTarget != undefined) nbEventTarget   = window.EventTarget;
+checkAfterCallback(nbEventTarget, 'addEventListener')
+_removeEventListener    = nbEventTarget.removeEventListener;
+nbEventTarget.removeEventListener   = after(_removeEventListener, function(eventName, callback){
     var nbAfter = callback.nbAfterCallback
         ,len    = nbAfter.length
         ;

@@ -65,12 +65,16 @@ chain inhert scope is nice (todo).
 ####markup statement example
 
     +---------------------------------------------------------------------------------------+
+    |                                                                                       |
     |<-----------------+                                                                    |
+    |                  |                                                                    |
     |   +--------------|----------------------------------------------------------------+   |
     |   |   <li data-repeat="{{array}}" data-attr-src="{{$index.foo.bar}}.jpg"></li>    |   |
     |   +-------------------------------------------------------------------------------+   |
-    |<------------------+                                                                   |
-    |   +---------------|---------------------------+                                       |
+    |                                                                                       |
+    |<-----------------+                                                                    |
+    |                  |                                                                    |
+    |   +--------------|----------------------------+                                       |
     |   |   <div data-scope="{{object}}">           |                                       |
     |   |       {{a.b.c}} + {{a.b.d}} = {{a.b.e}}   |                                       |
     |   |       <span>{{a.b.f}}</span>              |                                       |
@@ -343,5 +347,6 @@ node data store in dom with nb prefix like:
 
 * view <=> model <=> model
 * Object.observe as listener
+* event callback scope modify support
 * directly view modify support
 * inhert scope
