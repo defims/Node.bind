@@ -285,6 +285,7 @@ node data store in dom with nb prefix like:
     @about   it will set model for element, and set element model will trigger scopeBinding,
              if parent element binded a scope, child binding will inhert it.
              it's a invisible directive, so no need for userdefined
+             when call view.getScope , a scope chain will return
              root scope is window.
     @usage   scope:  ElementBind(element(s), 'directive', object);
              child:  ElementBind(element(s), 'directive', 'template');
@@ -350,4 +351,3 @@ node data store in dom with nb prefix like:
 * Object.observe as listener
 * event callback scope modify support
 * directly view modify support
-* inhert scope
