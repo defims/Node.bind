@@ -475,7 +475,6 @@ ViewPrototype.getScope  = function(){
     parentScope = scope = scopes.shift();
     while(scopes.length){
         tmpScope    = scopes.shift();
-        console.log(tmpScope);
         //todo __proto__ compatible for ie 10-
         parentScope.__proto__ = tmpScope;
         parentScope = tmpScope;
@@ -586,7 +585,7 @@ ViewPrototype.render    = function(){//according to directive.type,render view.
             }else if(attribute == 'class'){//attribute.class
                 var len     = value.length
                     ,result = []
-                    ,attrItem, attrType
+                    ,attrItem, attrType, className, l1, l2, nbLastClass
                     ;
                 while(len--){
                     attrItem    = value[len];
@@ -603,8 +602,18 @@ ViewPrototype.render    = function(){//according to directive.type,render view.
                         result.unshift(attrItem)
                     }
                 }
-                result  = result.join('')
-                if( node.className != result ) node.className = result;
+                //join without blank, means keep the result and handle blank in template
+                result      = result.join('').replace(/ +/g,' ').replace(/^\s+|\s+$/g, '');
+                className   = node.className;
+                if(nbLastClass = node.nbLastClass){
+                    l1  = nbLastClass.length;
+                    while(l1--) className = className.replace(nbLastClass[l1], '');
+                }
+                //replace with the nbLastClass
+                if( nbLastClass === undefined || nbLastClass.join(' ') != result ){
+                    node.className      = (className + ' ' + result).replace(/ +/g,' ').replace(/^\s+|\s+$/g, '');
+                    node.nbLastClass    = result.split(' ');
+                }
             }else if(attribute == 'style'){//attribute.style
                 if(detail[1]){//attributes.style.*
                     var valueLen    = value.length

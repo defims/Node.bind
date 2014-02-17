@@ -204,6 +204,7 @@ node data store in dom with nb prefix like:
  * nbEvents
  * nbInstances
  * nbPrototype
+ * nbLastClass
 
 
 ##Usage
