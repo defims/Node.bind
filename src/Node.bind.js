@@ -83,7 +83,7 @@
 var utility = {}
 /*
  *  =utility.path2Array
- *  @param  path        {String}
+ *  @param    {String}
  *  @return pathArray   {Array}
  * */
 utility.path2Array  = function(path){
@@ -245,6 +245,7 @@ PathPrototype.getObjectProperty = function(node, scope){
         object = object[item]
         if(!object) return {"object": {}, "property": undefined}
     }
+    //console.log(node,object,property)
     return {"object": object, "property": property}
 }
 /*
@@ -458,24 +459,28 @@ ViewPrototype.getScope  = function(){
         ,node       = self.node
         ,find       = false
         ,win        = window
-        ,scope      = self.scope
+        ,scopes     = []
+        ,scope,_scope,parentScope
         ;
-    //absolute scope
-    if(scope) return scope;
+    //absolute scope start with absolute scope
+    if(self.scope) scopes.push(self.scope);
     //repeat scope directive will search parentElement
     if( directive == 'repeat' || directive == 'scope' ) node = node.parentElement;
     while(node){
-        scope   = node.nbScope;
-        if(scope){
-            find    = true;
-            break;
-        }
+        if(node.nbScope) scopes.push(node.nbScope);
         node    = node.parentElement;
     }
-    if(!find){
-        win.nbScope = win
-        scope       = win.nbScope;
+    win.nbScope = win
+    scopes.push(win.nbScope);
+    parentScope = scope = scopes.shift();
+    while(scopes.length){
+        tmpScope    = scopes.shift();
+        console.log(tmpScope);
+        //todo __proto__ compatible for ie 10-
+        parentScope.__proto__ = tmpScope;
+        parentScope = tmpScope;
     }
+    //return scope prototype chain
     return scope
 }
 /*
@@ -587,17 +592,18 @@ ViewPrototype.render    = function(){//according to directive.type,render view.
                     attrItem    = value[len];
                     attrType    = Object.prototype.toString.call(attrItem);
                     if( attrType === '[object Array]' ){//['class1', 'class2']
-                        result.push(attrItem.join(' '))
+                        result.unshift(attrItem.join(' '))
                     }else if( attrType === '[object Object]' ){//{'a': 'class1', 'b': 'class2'}
                         var str = ''
                             ,k
                             ;
                         for(k in attrItem) str += ' ' + attrItem[k];
-                        result.push(str)
+                        result.unshift(str)
                     }else{
-                        result.push(attrItem)
+                        result.unshift(attrItem)
                     }
                 }
+                result  = result.join('')
                 if( node.className != result ) node.className = result;
             }else if(attribute == 'style'){//attribute.style
                 if(detail[1]){//attributes.style.*
