@@ -178,9 +178,9 @@ PathPrototype.set   = function(path){
  * =Path.prototype.get
  * @about   path.getObjectProperty then return object[property] for example: scope + parsed:[Item, "foo", "bar"] --> scope[0].foo.bar --> "value"
  * */
-PathPrototype.getValue = function(node, scope){
-    var self        = this
-        ,objProp    = self.getObjectProperty(node, scope)
+PathPrototype.getValue = function(node, scopes){
+    var path        = this
+        ,objProp    = path.getObjectProperty(node, scopes)
         ,object     = objProp.object
         ,property   = objProp.property
         ;
@@ -192,7 +192,7 @@ PathPrototype.getValue = function(node, scope){
  * =Path.prototype.setValue
  * @about         path.getObjectProperty from scope then set object[property] = value
  * */
-PathPrototype.setValue = function(node, scope, value){
+PathPrototype.setValue = function(node, scopes, value){
 }
 /*
  * =Path.prototype.parse
@@ -229,32 +229,50 @@ PathPrototype.unbind  = function(view, scope){
  * =Path.prototype.getObjectProperty
  * @about   walk all items and Item.get() --> get object property from scope, node is used in Item
  * */
-PathPrototype.getObjectProperty = function(node, scope){
-    var self        = this
-        ,parsedPath = self.parsed
-        ,len        = parsedPath.length - 1
-        ,object     = scope
-        ,item       = parsedPath[len]
-        ,property   = item
-        ,i
+PathPrototype.getObjectProperty = function(node, scopes){
+    var path        = this
+        ,parsedPath = path.parsed
+        ,pathLen    = parsedPath.length - 1
+        ,item       = parsedPath[0]
+        ,scope      = scopes[0]
+        ,scopeLen   = scopes.length
+        ,findScope  = false
+        ,object     = {}
+        ,property,i
         ;
-    if(item.getValue) property = item.getValue(node)
-    for( i=0; i<len; i++){
-        item    = parsedPath[i];
-        if(item.getValue) item = item.getValue(node);
-        object = object[item]
-        if(!object) return {"object": {}, "property": undefined}
+    if(item.getValue) item = item.getValue(node);
+    //find scope accord the first item
+    for( i=0; i<scopeLen; i++){
+        scope = scopes[i];
+        if(scope.hasOwnProperty(item)){
+            findScope   = true;
+            break;
+        }
     }
-    //console.log(node,object,property)
+    if(findScope){
+        object      = scope;
+        property    = parsedPath[pathLen];
+        for( i=0; i<pathLen; i++){
+            item    = parsedPath[i];
+            if(item.getValue) item = item.getValue(node);
+            if(object.hasOwnProperty(item) && object[item] !== undefined){
+                object  = object[item];
+            }else{
+                object      = {};
+                property    = undefined;
+                break;
+            }
+        }
+    }
     return {"object": object, "property": property}
 }
 /*
  * Template
  * */
 function Template(template){
-    var self    = this;
-    self.origin = template;//"{{$index.foo.bar}} is {{obj.prop}}"
-    self.parsed = self.parse(template || '');//[Path," is ",Path]
+    var _this   = this;
+    _this.origin= template;//"{{$index.foo.bar}} is {{obj.prop}}"
+    _this.parsed = _this.parse(template || '');//[Path," is ",Path]
 }
 var TemplatePrototype   = Template.prototype;
 /*
@@ -268,16 +286,16 @@ TemplatePrototype.set   = function(template){
  * @about   get scope --> walk path and call path.get(node, scope) --> join Template.parsed for example: [Path," is ",Path] --> ["value", " is ", "nice"]
  *          Path value can be object
  * */
-TemplatePrototype.getValue   = function(node, scope){
-    var self            = this
-        ,parsedTemplate = self.parsed
+TemplatePrototype.getValue   = function(node, scopes){
+    var template        = this
+        ,parsedTemplate = template.parsed
         ,len            = parsedTemplate.length
         ,result         = []
         ,path
         ;
     while(len--){
         path = parsedTemplate[len];
-        if(path.getValue) path = path.getValue(node, scope);
+        if(path.getValue) path = path.getValue(node, scopes);
         result.unshift(path);
     }
     if(result.length !== 0) return result//NodeBind(node(s), 'directive', scope, 'template')
@@ -365,20 +383,20 @@ TemplatePrototype.bind  = function(view, node){
  * =Template.prototype.getObjectProperty
  * @about   get all path's object property
  * */
-TemplatePrototype.getObjectProperty  = function(view, node, scope){
-    var self            = this
-        ,parsedTemplate = view.template.parsed
+TemplatePrototype.getObjectProperty  = function(view, node, scopes){
+    var parsedTemplate  = view.template.parsed
         ,len            = parsedTemplate.length
         ,objProps       = []
-        ,item
+        ,path
         ;
     while(len--){
-        item    = parsedTemplate[len];
+        path    = parsedTemplate[len];
         //if(path.bind)
-        if(item && item.path) objProps.push(item.getObjectProperty(node, scope));
+        if(path && path.path) objProps.push(path.getObjectProperty(node, scopes));
     }
     if(objProps.length) return objProps//NodeBind(node(s), 'directive', scope, 'template')
-    else return [{"object": scope, "property": ''}]//NodeBind(node(s), 'directive', scope, '') or NodeBind(node(s), 'directive', scope
+    //todo
+    else return [{"object": scopes[0], "property": ''}]//NodeBind(node(s), 'directive', scope, '') or NodeBind(node(s), 'directive', scope
 }
 /*
  * =Template.prototype.unbind
@@ -391,9 +409,9 @@ TemplatePrototype.unbind    = function(view){
  * =Directive
  * */
 function Directive(directive){
-    var self    = this;
-    self.origin = directive;
-    self.parsed = self.parse(directive);
+    var _this   = this;
+    _this.origin= directive;
+    _this.parsed = _this.parse(directive);
 }
 var DirectivePrototype  = Directive.prototype;
 /*
@@ -424,14 +442,14 @@ DirectivePrototype.parse    = function(directive){
  *          view member can be store in element dataset like data-nb-attribute-style-top="{{foo.bar}}em", data-nb-directive="template", and other node will be data-nb-childnode-1-directive="template", which is used for coping
  * */
 function View(node, directive, scope, template){
-    var self        = this;
-    self.node       = node;
-    self.scope      = scope;//direct scope
-    self.directive  = new Directive(directive);
-    self.template   = new Template(template);
-    self.bindings   = [];
-    self.refreshListener();
-    //self.refresh();
+    var view        = this;
+    view.node       = node;
+    view.scope      = scope;//direct scope
+    view.directive  = new Directive(directive);
+    view.template   = new Template(template);
+    view.bindings   = [];
+    view.refreshListener();
+    //view.refresh();
 }
 var ViewPrototype   = View.prototype;
 /*
@@ -453,34 +471,27 @@ ViewPrototype.refresh   = function(){
  * =View.prototype.get scope
  * @about   all template paths owns same scope
  * */
-ViewPrototype.getScope  = function(){
-    var self        = this
-        ,directive  = self.directive.parsed.type
-        ,node       = self.node
+ViewPrototype.getScopes  = function(){
+    var view        = this
+        ,directive  = view.directive.parsed.type
+        ,node       = view.node
         ,find       = false
         ,win        = window
         ,scopes     = []
-        ,scope,_scope,parentScope
+        ,scope
         ;
     //absolute scope start with absolute scope
-    if(self.scope) scopes.push(self.scope);
+    if( view.scope ) scopes.push(view.scope);
     //repeat scope directive will search parentElement
     if( directive == 'repeat' || directive == 'scope' ) node = node.parentElement;
     while(node){
-        if(node.nbScope) scopes.push(node.nbScope);
+        scope   = node.nbScope;
+        if(scope) scopes.push(scope);
         node    = node.parentElement;
     }
-    win.nbScope = win
+    win.nbScope = win.nbScope || win;
     scopes.push(win.nbScope);
-    parentScope = scope = scopes.shift();
-    while(scopes.length){
-        tmpScope    = scopes.shift();
-        //todo __proto__ compatible for ie 10-
-        parentScope.__proto__ = tmpScope;
-        parentScope = tmpScope;
-    }
-    //return scope prototype chain
-    return scope
+    return scopes
 }
 /*
  * =View.prototype.render
@@ -488,15 +499,15 @@ ViewPrototype.getScope  = function(){
  *          if directive.type is repeat, keep instances number --> clone models and views to new instance with new node --> two way bind model and view --> find and set scope
  * */
 ViewPrototype.render    = function(){//according to directive.type,render view.
-    var self                = this
-        ,node               = self.node
+    var view                = this
+        ,node               = view.node
         ,nodeType           = node.nodeType
-        ,parsedDirective    = self.directive.parsed
+        ,parsedDirective    = view.directive.parsed
         ,type               = parsedDirective.type.toLowerCase()
         ,detail             = parsedDirective.detail
-        ,template           = self.template
-        ,scope              = self.getScope()
-        ,value              = template.getValue(node, scope)
+        ,template           = view.template
+        ,scopes             = view.getScopes()
+        ,value              = template.getValue(node, scopes)
         ,ELEMENT_NODE       = 1
         ,TEXT_NODE          = 3
         ;
@@ -505,12 +516,12 @@ ViewPrototype.render    = function(){//according to directive.type,render view.
             // if empty set scope as value for example NodeBind(node(s), 'directive', object)
             // it will parse no property and get object[''] == ''
             // but if directive is scope and repeat we means object it self
-            value   = value[0] || scope;
+            value   = value[0] || scopes[0];
             if(node.nbScope != value) NodeBind.setTreeScope(node, value);//for absolute scope
         }
     }else if(type == "repeat"){
         if(nodeType == ELEMENT_NODE){
-            value   = value[0] || scope;//todo multi template
+            value   = value[0] || scopes[0];//todo multi template
             if(node.nbPrototype){//if node is an instance
                 if(node.nbScope != value) NodeBind.setTreeScope(node, value);
             }else{
@@ -562,7 +573,7 @@ ViewPrototype.render    = function(){//according to directive.type,render view.
                 }
                 //delete more
                 len -= 2;
-                while(++len<instances.length){//extra instance
+                if(len>0) while(++len<instances.length){//extra instance
                     lastInstance    = instances[len];
                     //todo remove models and views
                     lastInstance.parentNode.removeChild(lastInstance)
@@ -672,7 +683,10 @@ ViewPrototype.render    = function(){//according to directive.type,render view.
                     }
                     while(valueLen--) attribute[lastItem]    = value[valueLen];
                 }else{//attribute.a like attribute.src
-                    while(valueLen--) node.setAttribute(detail[0], value[valueLen]);
+                    while(valueLen--){
+                        var value   = value[valueLen];
+                        if(value) node.setAttribute(detail[0], value);
+                    }
                 }
             }
         }else if(nodeType == TEXT_NODE){
@@ -708,7 +722,19 @@ ViewPrototype.render    = function(){//according to directive.type,render view.
         }else if(nodeType == TEXT_NODE){
             if(node.nodeValue != value) node.nodeValue = value;
         }
+    }else{//others lick node.scrollLeft
+        var detailLen   = detail.length
+            ,valueLen   = value.length
+            ,key        = type
+            ,i,item
+            ;
+        for(i=0; i<detailLen; i++){
+            item    = detail[i];
+            key     += item.substring(0,1).toUpperCase() + item.substring(1);
+        }
+        while(valueLen--) node[key]  = value[valueLen];
     }
+    //notice render complete
 }
 /*
  * =View.prototype.getBinding
@@ -743,10 +769,7 @@ ViewPrototype.getBinding   = function(target){
  *          A <- B if B change call A's function --> B.bind(A)
  * * */
 ViewPrototype.bind  = function(target, callback){
-    var self        = this
-        ,binding    = self.getBinding(target)
-        ;
-    binding.callback    = callback;
+    this.getBinding(target).callback    = callback;
 }
 /*
  * =View.prototype.unbind
@@ -762,9 +785,9 @@ ViewPrototype.unbind    = function(target){
 ViewPrototype.getObjectProperty  = function(){
      var self               = this
         ,node               = self.node
-        ,scope              = self.getScope()
+        ,scopes             = self.getScopes()
         ;
-    return self.template.getObjectProperty(self, node, scope);
+    return self.template.getObjectProperty(self, node, scopes);
 }
 /*
  * =View.prototype.change
@@ -789,19 +812,19 @@ var models  = [];
  * */
 function Model(object, property){
     var len         = models.length
-        ,self       = this
-        ,model
+        ,model      = this
+        ,m
         ;
     //model must be singleton
     while(len--){
-        model   = models[len];
-        if(model.object == object && model.property == property) return model
+        m   = models[len];
+        if(m.object == object && m.property == property) return m
     }
-    self.object     = object;
-    self.property   = property;
-    self.bindings   = [];//[target: view|model, callback: render|update]
-    self.refreshListener();
-    models.push(self);
+    model.object     = object;
+    model.property   = property;
+    model.bindings   = [];//[target: view|model, callback: render|update]
+    model.refreshListener();
+    models.push(model);
 }
 var ModelPrototype  = Model.prototype;
 /*
@@ -965,21 +988,20 @@ function isEqual(a, b) {
 /*
  * =clone
  * */
-function clone(src){
-    function mixin(dest, source, copyFunc) {
-        var name, s, i, empty = {};
-        for(name in source){
-            // the (!(name in empty) || empty[name] !== s) condition avoids copying properties in "source"
-            // inherited from Object.prototype.  For example, if dest has a custom toString() method,
-            // don't overwrite it with the toString() method that source inherited from Object.prototype
-            s = source[name];
-            if(!(name in dest) || (dest[name] !== s && (!(name in empty) || empty[name] !== s))){
-                dest[name] = copyFunc ? copyFunc(s) : s;
-            }
+function mixin(dest, source, copyFunc) {
+    var name, s, i, empty = {};
+    for(name in source){
+        // the (!(name in empty) || empty[name] !== s) condition avoids copying properties in "source"
+        // inherited from Object.prototype.  For example, if dest has a custom toString() method,
+        // don't overwrite it with the toString() method that source inherited from Object.prototype
+        s = source[name];
+        if(!(name in dest) || (dest[name] !== s && (!(name in empty) || empty[name] !== s))){
+            dest[name] = copyFunc ? copyFunc(s) : s;
         }
-        return dest;
     }
-
+    return dest;
+}
+function clone(src){
     if(!src || typeof src != "object" || Object.prototype.toString.call(src) === "[object Function]")
         // null, undefined, any non-object, or function
         return src; // anything
@@ -1064,8 +1086,6 @@ function after( self, func ){
 /*
  * =inject callback argument with check function
  * */
-_o = [];
-_a = [];
 function checkAfterCallback(object, property){
     var origin  = object[property];
     object[property]    = function(){
@@ -1271,20 +1291,19 @@ BindingsPrototype.getViews  = function(model){
  * @about   handle parameters and call NodeBindCore
  * */
 function NodeBind(nodes, directive, scope, template){
-    var _nodes,_template,_scope,nodesLen,node,views,view,objProps,objProp,len,model;
+    var _nodes,_template,_scope,len;
     //single node
     _nodes      = nodes.nodeName ? [nodes] : nodes;
     if(!template ){
         if( typeof scope == 'string'){//NodeBind(node(s), 'directive', template);
-            _template    = scope;
-            _scope       = undefined;
-        }/*else{//NodeBind(node(s), 'scope', scope)
-            _template    = undefined;
-        }*/
+            _template   = scope;
+        }else{//NodeBind(node(s), 'scope', scope)
+            _scope      = scope;
+        }
     }
     //if scope isn't empty, scope will be stored in view.scope as private scope
-    nodesLen    = _nodes.length;
-    while(nodesLen--) NodeBind.core(_nodes[nodesLen], directive, _scope, _template);
+    len = _nodes.length;
+    while(len--) NodeBind.core(_nodes[len], directive, _scope, _template);
 }
 /*
  * =NodeBind.core

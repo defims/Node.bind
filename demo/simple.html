@@ -1,7 +1,8 @@
 <!doctype html>
 <head>
     <script src="../../DefineProperty.polyfill/DefineProperty.polyfill.js"></script>
-    <script src="../Node.bind.min.js"></script>
+    <!--<script src="../Node.bind.min.js"></script>-->
+    <script src="../src/Node.bind.js"></script>
 </head>
 <body>
     <div id='textContent'></div>
@@ -23,7 +24,9 @@
     <div id='event2'>event2</div>
     <div id='event3'>event3</div>
     <div id='scope'>
-        <div id='scopeItem'></div>
+        <div id='childScope'>
+            <div id='scopeItem'></div>
+        </div>
     </div>
     <div class='repeat'>
         <div class='textContent'></div>
@@ -173,10 +176,11 @@ NodeBind($('#event3'), 'event.transitionEnd', data.event, 'transitionEnd');
  *          root scope is window.
  * @usage   scope:  ElementBind(element(s), 'directive', object);
  *          child:  ElementBind(element(s), 'directive', 'template');
- * *
+ * */
 //NodeBind($('#scope'), 'scope', data, '{{scope}}');//will watch data.scope
 //NodeBind($('#scope'), 'scope', data.scope);//keep data.scope unwatch
-NodeBind($('#scope'), 'scope', '{{data.scope}}');//relative scope
+NodeBind($('#scope'), 'scope', '{{data}}');//relative scope
+NodeBind($('#childScope'), 'scope', '{{scope}}');//relative scope
 NodeBind($('#scopeItem'), 'textContent', '{{path.to.data}}');
 /**/
 
@@ -185,7 +189,7 @@ NodeBind($('#scopeItem'), 'textContent', '{{path.to.data}}');
  * @about   it will repeat the element and bind the child bindings for new element,
  *          each repeat element will own a scope,
  * @usage   NodeBind(element(s), 'directive', scope, 'template')
- */
+ *
 //NodeBind($('.repeat'), 'repeat', data, '{{arr}}');//watch data.arr
 //NodeBind($('.repeat'), 'repeat', data.arr);//keep data.arr unwatch
 NodeBind($('.repeat'), 'repeat', '{{data.arr}}');//relative repeat scope
