@@ -150,7 +150,7 @@ NodeBind($('#attributeCustom'), 'attribute.custom.define', data.attribute, '{{cu
  * = dataset directive
  * @about   dataset.data.set.content will point to attribute data-data-set-content
  * @usage   ElementBind(element(s), directive, pathScope, 'template');
- *
+ */
 NodeBind($('#dataset'), 'dataset.data.set.content', data.dataset, '{{foo}}');
 /**/
 
@@ -166,7 +166,7 @@ NodeBind($('#dataset'), 'dataset.data.set.content', data.dataset, '{{foo}}');
  *          for example: '{{click}} click1 {{click2}}' --> [path,'click1',path]
  *          'click1' will be ignored
  * @usage   ElementBind(element(s), 'directive', propertyScope, 'property');
- *
+ */
 NodeBind($('#event'), 'event.click', data.event, '{{click}}');//will watch data.event.click
 //NodeBind($('#event1'), 'event.click', data.event.click);//keep data.event.click unwatch
 NodeBind($('#event2'), 'event.click', data.event, '{{click}}{{click2}}');
@@ -181,7 +181,7 @@ NodeBind($('#event3'), 'event.transitionEnd', data.event, 'transitionEnd');
  *          root scope is window.
  * @usage   scope:  ElementBind(element(s), 'directive', object);
  *          child:  ElementBind(element(s), 'directive', 'template');
- * *
+ * */
 //NodeBind($('#scope'), 'scope', data, '{{scope}}');//will watch data.scope
 //NodeBind($('#scope'), 'scope', data.scope);//keep data.scope unwatch
 NodeBind($('#scope'), 'scope', '{{data}}');//relative scope
@@ -255,7 +255,7 @@ setTimeout(function(){
     //data.arr[4]     = 4;
     //data.arr[9]     = 9;
     data.repeat.push(['e','f','g'])
-    //data.scope.path.to.data = 'modify data';
+    data.scope.path.to.data = 'modify data';
     //data.attribute.id               = 'changeId';
     //data.attribute.class.string     = 'c1 c2';
     //data.attribute.class.array.push('class3');
@@ -270,7 +270,7 @@ setTimeout(function(){
     //data.dataset.foo                = 'modify bar';
     //console.log('modify data.event.click')
     data.event.click                = function(){//modify
-        console.log('modify click event')
+        console.log('modify click event', this.nbViews["event_click"].getValue())
     }
     //data.arr    = [11,12,'a','b'];
     //data.bool   = false;

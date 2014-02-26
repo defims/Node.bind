@@ -424,7 +424,7 @@ ViewPrototype.render    = function(){//according to directive.type,render view.
             }else{//if node is an prototype
                 var len         = value.length
                     ,instances  = node.nbInstances  = node.nbInstances || []
-                    ,i,j,item,newNode,lastInstance,nbViews,nbView,viewsLen,pathLen
+                    ,i,j,item,newNode,lastInstance
                     ;
                 //todo when node is textNode
                 for(i=0; i<len; i++){
@@ -450,12 +450,12 @@ ViewPrototype.render    = function(){//according to directive.type,render view.
                             for(i=0; i<len; i++) node = node.childNodes[path[i]];
                             return node;
                         }
-                        var len,nbViews,nbInstances,nbPrototype,nbLastClass,currNewNode;
+                        var nbViews,nbInstances,nbPrototype,nbLastClass,currNewNode;
                         //walk all child nodes and copy views
                         NodeBind.walkTree(node, function(depth, path){
                             currNode    = this;
                             var nbViews = currNode.nbViews
-                                ,len,currNewNode,nbView,nbViews,matchNode
+                                ,k,currNewNode,nbView,nbViews,matchNode,directive,_nbViews
                                 ;
                             if(currNode.nbPrototype){
                                 //delete instances in new node
@@ -464,17 +464,17 @@ ViewPrototype.render    = function(){//according to directive.type,render view.
                                 //ignore instances and it's children
                                 return false
                             }else if(nbViews  = currNode.nbViews){
-                                len         = nbViews.length;
                                 matchNode   = getMatchNode(newNode, path);
-                                views       = matchNode.nbViews = [];
-                                while(len--){
-                                    nbView  = nbViews[len];
-                                    views.push(new View(
+                                _nbViews    = matchNode.nbViews = {};
+                                for(k in nbViews){
+                                    nbView              = nbViews[k];
+                                    directive           = nbView.directive.origin;
+                                    _nbViews[directive.replace(/\./gim,'_')] = new View(
                                         matchNode
-                                        ,nbView.directive.origin
+                                        ,directive
                                         ,nbView.nbScope
                                         ,nbView.template.origin
-                                    ));
+                                    );
                                 }
                             }
                             //todo nbEvents nbLastClass
@@ -653,8 +653,7 @@ ViewPrototype.render    = function(){//according to directive.type,render view.
  * @about   get binding from model.bindings and match target key
  * */
 ViewPrototype.getBinding   = function(target){
-    var self        = this
-        ,bindings   = self.bindings
+    var bindings    = this.bindings
         ,len        = bindings.length
         ,has        = false
         ,binding
@@ -982,13 +981,13 @@ function check(){
  * =after
  * use aop for func
  * */
-function after( self, func ){
+function after( origin, func ){
     return function(){
         var _this       = this
             ,_arguments = arguments
             ;
         try{
-            self.apply( _this, _arguments);
+            origin.apply( _this, _arguments);
         }finally{
             func.apply( _this, _arguments);
         }
@@ -1111,8 +1110,7 @@ ModelPrototype.refreshListener  = function(){
  * @about   get binding from model.bindings and match target key
  * */
 ModelPrototype.getBinding   = function(target){
-    var self        = this
-        ,bindings   = self.bindings
+    var bindings    = this.bindings
         ,len        = bindings.length
         ,has        = false
         ,binding
@@ -1139,10 +1137,7 @@ ModelPrototype.getBinding   = function(target){
  *          A <- B if B change call A's function --> B.bind(A)
  * */
 ModelPrototype.bind = function(target, callback){
-    var self        = this
-        ,binding    = self.getBinding(target)
-        ;
-    binding.callback    = callback;
+    this.getBinding(target).callback = callback;
 }
 /*
  * =Model.prototype.unbind
@@ -1204,13 +1199,14 @@ BindingsPrototype.getViews  = function(model){
 function NodeBind(nodes, directive, scope, template){
     var _nodes,_template,_scope,len;
     //single node
+    _scope      = scope;
     _nodes      = nodes.nodeName ? [nodes] : nodes;
+    _template   = template;
     if(!template ){
         if( typeof scope == 'string'){//NodeBind(node(s), 'directive', template);
             _template   = scope;
-        }else{//NodeBind(node(s), 'scope', scope)
-            _scope      = scope;
-        }
+            _scope  = undefined;
+        }//else{}//NodeBind(node(s), 'scope', scope)
     }
     //if scope isn't empty, scope will be stored in view.scope as private scope
     len = _nodes.length;
@@ -1225,8 +1221,8 @@ NodeBind.core   = function(node, directive, scope, template){
     var views,view,models,model,objProps,objProp,len;
     //create view
     view        = new View(node, directive, scope, template);
-    views       = node.nbViews = node.nbViews || [];
-    views.push(view);
+    views       = node.nbViews = node.nbViews || {};
+    views[directive.replace(/\./gim,'_')]    = view;
     //create model
     models      = node.nbModels = node.nbModels || [];
     objProps    = view.getObjectProperty();
@@ -1313,17 +1309,16 @@ NodeBind.walkTree   = function(node, callback) {
 NodeBind.setTreeScope   = function(node, scope){
     if(!scope) return
     node.nbScope    = scope;
-    var currNode,nbViews,viewLen,nbModels,nbView,objProps,objPropsLen,objProp,nbModel;
+    var currNode,k,nbViews,nbModels,nbView,objProps,objPropsLen,objProp,nbModel;
 
     //walk all children
     NodeBind.walkTree( node, function(depth){
         currNode    = this;
         if(nbViews = currNode.nbViews){
-            viewLen = nbViews.length;
             //clean all models
             nbModels = currNode.nbModels = [];//memory clean todo
-            while(viewLen--){
-                nbView      = nbViews[viewLen];
+            for(k in nbViews){
+                nbView      = nbViews[k];
                 //todo repeat scope view
                 //clean view bindings
                 objProps    = nbView.getObjectProperty();
