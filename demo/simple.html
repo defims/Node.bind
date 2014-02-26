@@ -29,8 +29,10 @@
         </div>
     </div>
     <div class='repeat'>
-        <div class='textContent'></div>
-        <div class='textContent1'>*</div>
+        <div class='childRepeat'>
+            <div class='textContent'></div>
+            <div class='textContent1'>*</div>
+        </div>
     </div>
     <div id='textNode'>textNode</div>
 
@@ -46,7 +48,10 @@ var data ={
         }]
         ,value  : 'value'
     },
-    arr     : ['a','b'],
+    repeat  : [
+        ['a','b']
+        ,['c','d']
+    ],
     bool    : true,
     num     : 90,
     handle  : function(){
@@ -176,7 +181,7 @@ NodeBind($('#event3'), 'event.transitionEnd', data.event, 'transitionEnd');
  *          root scope is window.
  * @usage   scope:  ElementBind(element(s), 'directive', object);
  *          child:  ElementBind(element(s), 'directive', 'template');
- * */
+ * *
 //NodeBind($('#scope'), 'scope', data, '{{scope}}');//will watch data.scope
 //NodeBind($('#scope'), 'scope', data.scope);//keep data.scope unwatch
 NodeBind($('#scope'), 'scope', '{{data}}');//relative scope
@@ -189,12 +194,13 @@ NodeBind($('#scopeItem'), 'textContent', '{{path.to.data}}');
  * @about   it will repeat the element and bind the child bindings for new element,
  *          each repeat element will own a scope,
  * @usage   NodeBind(element(s), 'directive', scope, 'template')
- *
-//NodeBind($('.repeat'), 'repeat', data, '{{arr}}');//watch data.arr
-//NodeBind($('.repeat'), 'repeat', data.arr);//keep data.arr unwatch
-NodeBind($('.repeat'), 'repeat', '{{data.arr}}');//relative repeat scope
-NodeBind($('.repeat .textContent'), 'textContent', '{{$index}}')
-NodeBind($('.repeat .textContent1'), 'textContent', '{{$index}}')
+ */
+//NodeBind($('.repeat'), 'repeat', data, '{{repeat}}');//watch data.arr
+//NodeBind($('.repeat'), 'repeat', data.repeat);//keep data.arr unwatch
+NodeBind($('.repeat'), 'repeat', '{{data.repeat}}');//relative repeat scope
+NodeBind($('.repeat .childRepeat'), 'repeat', '{{$index}}')
+NodeBind($('.repeat .childRepeat .textContent'), 'textContent', '{{$index}}')
+//NodeBind($('.repeat .childRepeat .textContent1'), 'textContent', '{{$index}}')
 /**/
 
 /*
@@ -245,10 +251,11 @@ ElementBind.unbind(bindId);
 /**/
 setTimeout(function(){
     data.obj.path[0].to[0].value = 'modify content';
-    data.arr[0]     = 3;
-    data.arr[4]     = 4;
-    data.arr[9]     = 9;
-    data.scope.path.to.data = 'modify data';
+    //data.repeat[0]     = 3;
+    //data.arr[4]     = 4;
+    //data.arr[9]     = 9;
+    data.repeat.push(['e','f','g'])
+    //data.scope.path.to.data = 'modify data';
     //data.attribute.id               = 'changeId';
     //data.attribute.class.string     = 'c1 c2';
     //data.attribute.class.array.push('class3');
@@ -281,6 +288,11 @@ setTimeout(function(){
     //data.arr.push({"foo":"bar"})
     //data.arr[2] = 4;
 },1000)
+/*
+setTimeout(function(){
+    data.repeat.push(['g','h'])
+},3000)
+*/
 /**
 document.addEventListener('click', function(){
     data.obj.path[0].to[0].value = 'click';

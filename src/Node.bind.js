@@ -1,83 +1,5 @@
 (function(document, window, undefined){
 /*
- * =flag
- * scope flag => data-scope node.scope
- * view flag => node.views []
- * repeat flag => data-repeat
- *
- *
- * scope:
- *  +-------------------------------------------------------------------------------+
- *  |   <li data-repeat="{{array}}" data-attr-src="{{$index.foo.bar}}.jpg"></li>    |
- *  +-------------------------------------------------------------------------------+
- *  +-------------------------------------------+
- *  |   <div><!--node.scope=object-->           |
- *  |       {{a.b.c}} + {{a.b.d}} = {{a.b.e}}   |
- *  |       <span>{{a.b.f}}</span>              |
- *  |   </div>                                  |
- *  +-------------------------------------------+
- *
- *
- * view:
- *      +--------------------------+    +----------------------------------------+
- *  <li | data-repeat="{{repeat}}" |    | data-attr-src="{{$index.foo.bar}}.jpg" | ></li>
- *      +--------------------------+    +----------------------------------------+
- *  <div><!--node.scope=object-->
- *      +-----------------------------------+
- *      | {{a.b.c}} + {{a.b.d}} = {{a.b.e}} |
- *      +-----------------------------------+
- *            +---------+
- *      <span>|{{a.b.f}}|</span>
- *            +---------+
- *  </div>
- *
- *
- *
- * template:
- *                   +---------+                 +----------------------+
- *  <li data-repeat="|{{array}}|" data-attr-src="|{{$index.foo.bar}}.jpg|" ></li>
- *                   +---------+                 +----------------------+
- *  <div><!--node.scope=object-->
- *      +-----------------------------------+
- *      | {{a.b.c}} + {{a.b.d}} = {{a.b.e}} |
- *      +-----------------------------------+
- *            +---------+
- *      <span>|{{a.b.f}}|</span>
- *            +---------+
- *  </div>
- *
- *
- *
- * path:
- *                     +-----+                     +--------------+
- *  <li data-repeat="{{|array|}}" data-attr-src="{{|$index.foo.bar|}}.jpg" ></li>
- *                     +-----+                     +--------------+
- *  <div><!--node.scope=object-->
- *        +-----+       +-----+         +-----+
- *      {{|a.b.c|}} + {{|a.b.d|}}   = {{|a.b.e|}}
- *        +-----+       +-----+         +-----+
- *              +-----+
- *      <span>{{|a.b.f|}}</span>
- *              +-----+
- *  </div>
- *
- * node add:
- * nbScope
- * nbViews
- * nbModels
- *
- * circle:
- *
- * View --> Model
- * view change --> view.change --> match model --> model.update
- *
- * View <-- Model
- * model change --> model.change --> match view --> view.render
- *
- * Model --> Model
- * model change --> model.change --> match model --> model.update
- * */
-/*
  * =utility
  * */
 var utility = {}
@@ -92,44 +14,36 @@ utility.path2Array  = function(path){
 /*
  * =Filter
  * */
-function Filter(filter){
-
-}
+function Filter(filter){}
 var FilterPrototype = Filter.prototype;
 /*
  * =Filter.prototype.render
  * */
-FilterPrototype.render  = function(){
-
-}
+FilterPrototype.render  = function(){}
 /*
  * =Filter.prototype.compile
  * */
-FilterPrototype.compile = function(){
-
-}
+FilterPrototype.compile = function(){}
 /*
  * =Item
  * */
 function Item(item){
-    var self = this;
-    self.origin = item;//$index
+    this.origin = item;//$index
 }
 var ItemPrototype   = Item.prototype;
 /*
  * =Item.prototype.get
  * @about   get value from node for example: $index + node --> 0
  * */
-ItemPrototype.getValue   = function(node){
-    var self    = this
-        ,origin = self.origin
-        ,result
+ItemPrototype.getValue   = function(node, directive){
+    var result  = this.origin
         ;
-    if(origin == "$index"){
+    if(result == "$index"){
         //get from node
         var find        = false
             ,scopeNode  = node
             ;
+        if(directive == 'scope' || directive == 'repeat' ) scopeNode = node.parentElement;
         //find scope node
         while(scopeNode){
             if(scopeNode.nbPrototype || scopeNode.nbInstances){
@@ -148,8 +62,6 @@ ItemPrototype.getValue   = function(node){
             }
             result = -result;
         }
-    }else{
-        result  = origin
     }
     return result
 }
@@ -158,13 +70,13 @@ ItemPrototype.getValue   = function(node){
  * @filter  each path has its own filter
  * */
 function Path(path){
-    var self        = this
+    var _this       = this
         ,splitPath  = path.split('|')
         ;
-    self.origin = path;                     //"$index.foo.bar|Number"
-    self.path   = splitPath[0];             //"$index.foo.bar"
-    self.filter = new Filter(splitPath[1]); //"Number"
-    self.parsed = self.parse(path || '');   //[Item, "foo", "bar"]
+    _this.origin = path;                     //"$index.foo.bar|Number"
+    _this.path   = splitPath[0];             //"$index.foo.bar"
+    _this.filter = new Filter(splitPath[1]); //"Number"
+    _this.parsed = _this.parse(path || '');   //[Item, "foo", "bar"]
 };
 var PathPrototype   = Path.prototype;
 /*
@@ -178,9 +90,9 @@ PathPrototype.set   = function(path){
  * =Path.prototype.get
  * @about   path.getObjectProperty then return object[property] for example: scope + parsed:[Item, "foo", "bar"] --> scope[0].foo.bar --> "value"
  * */
-PathPrototype.getValue = function(node, scopes){
+PathPrototype.getValue = function(node, scopes, directive){
     var path        = this
-        ,objProp    = path.getObjectProperty(node, scopes)
+        ,objProp    = path.getObjectProperty(node, scopes, directive)
         ,object     = objProp.object
         ,property   = objProp.property
         ;
@@ -229,7 +141,7 @@ PathPrototype.unbind  = function(view, scope){
  * =Path.prototype.getObjectProperty
  * @about   walk all items and Item.get() --> get object property from scope, node is used in Item
  * */
-PathPrototype.getObjectProperty = function(node, scopes){
+PathPrototype.getObjectProperty = function(node, scopes, directive){
     var path        = this
         ,parsedPath = path.parsed
         ,pathLen    = parsedPath.length - 1
@@ -252,9 +164,10 @@ PathPrototype.getObjectProperty = function(node, scopes){
     if(findScope){
         object      = scope;
         property    = parsedPath[pathLen];
+        if(property.getValue)   property = property.getValue(node, directive);
         for( i=0; i<pathLen; i++){
             item    = parsedPath[i];
-            if(item.getValue) item = item.getValue(node);
+            if(item.getValue) item = item.getValue(node, directive);
             if(object.hasOwnProperty(item) && object[item] !== undefined){
                 object  = object[item];
             }else{
@@ -270,70 +183,16 @@ PathPrototype.getObjectProperty = function(node, scopes){
  * Template
  * */
 function Template(template){
-    var _this   = this;
-    _this.origin= template;//"{{$index.foo.bar}} is {{obj.prop}}"
-    _this.parsed = _this.parse(template || '');//[Path," is ",Path]
+    var _this       = this;
+    _this.origin    = template;//"{{$index.foo.bar}} is {{obj.prop}}"
+    _this.parsed    = _this.parse(template || '');//[Path," is ",Path]
 }
 var TemplatePrototype   = Template.prototype;
 /*
  * =Template.prototype.set
  * @about   set template.origin = template --> parse template.origin
  * */
-TemplatePrototype.set   = function(template){
-}
-/*
- * =Template.prototype.get
- * @about   get scope --> walk path and call path.get(node, scope) --> join Template.parsed for example: [Path," is ",Path] --> ["value", " is ", "nice"]
- *          Path value can be object
- * */
-TemplatePrototype.getValue   = function(node, scopes){
-    var template        = this
-        ,parsedTemplate = template.parsed
-        ,len            = parsedTemplate.length
-        ,result         = []
-        ,path
-        ;
-    while(len--){
-        path = parsedTemplate[len];
-        if(path.getValue) path = path.getValue(node, scopes);
-        result.unshift(path);
-    }
-    if(result.length !== 0) return result//NodeBind(node(s), 'directive', scope, 'template')
-    else return []
-    //else if(result.length === 1 && !result[0]) return []//NodeBind(node(s), 'directive', scope, '') or
-    //else return [scope]//NodeBind(node(s), 'directive', scope)
-    //always return array
-}
-/*
- * =Template.prototype.setValue
- * @about   matchset for example origin: "{{$index.foo.bar}} is {{obj.prop}}" --> get path "{{$index.foo.bar}}" and path.setValue(value)
- * */
-TemplatePrototype.setValue   = function(value){
-
-}
-/*
- * =Template.prototype.get scope
- * @about   all child paths owns same scope
- * *
-TemplatePrototype.getScope  = function(node){
-    var find    = false
-        ,win    = window
-        ,scope
-        ;
-    while(node){
-        scope   = node.nbScope;
-        if(scope){
-            find    = true;
-            break;
-        }
-        node    = node.parentElement;
-    }
-    if(!find){
-        win.nbScope = win
-        scope       = win.nbScope;
-    }
-    return scope
-}
+TemplatePrototype.set   = function(template){}
 /*
  * =Template.prototype.parse
  * @about   parse value for example "{{$index.foo.bar}} is {{obj.prop}}" --> [Path, " is ", Path]
@@ -364,6 +223,57 @@ TemplatePrototype.parse = function(str){
     return parsed
 }
 /*
+ * =Template.prototype.get
+ * @about   get scope --> walk path and call path.get(node, scope) --> join Template.parsed for example: [Path," is ",Path] --> ["value", " is ", "nice"]
+ *          Path value can be object
+ * */
+TemplatePrototype.getValue   = function(node, scopes, directive){
+    var template        = this
+        ,parsedTemplate = template.parsed
+        ,len            = parsedTemplate.length
+        ,result         = []
+        ,path
+        ;
+    while(len--){
+        path = parsedTemplate[len];
+        if(path.getValue) path = path.getValue(node, scopes, directive);
+        result.unshift(path);
+    }
+    if(result.length !== 0) return result//NodeBind(node(s), 'directive', scope, 'template')
+    else return []
+    //else if(result.length === 1 && !result[0]) return []//NodeBind(node(s), 'directive', scope, '') or
+    //else return [scope]//NodeBind(node(s), 'directive', scope)
+    //always return array
+}
+/*
+ * =Template.prototype.setValue
+ * @about   matchset for example origin: "{{$index.foo.bar}} is {{obj.prop}}" --> get path "{{$index.foo.bar}}" and path.setValue(value)
+ * */
+TemplatePrototype.setValue   = function(value){}
+/*
+ * =Template.prototype.get scope
+ * @about   all template paths owns same scope
+ * */
+TemplatePrototype.getScopes  = function(node, directive){
+    var view        = this
+        ,find       = false
+        ,win        = window
+        ,scopes     = []
+        ,scope
+        ;
+    //repeat scope directive will search parentElement
+    if( directive == 'repeat' || directive == 'scope' ) node = node.parentElement;
+    while(node){
+        scope   = node.nbScope;
+        if(scope) scopes.push(scope);
+        node    = node.parentElement;
+    }
+    win.nbScope = win.nbScope || win;
+    scopes.push(win.nbScope);
+    return scopes
+}
+
+/*
  * =Template.prototype.bind
  * @about   template.getScope --> walk all path and call path.bind(view, scope) --> return bindings
  * *
@@ -379,12 +289,12 @@ TemplatePrototype.bind  = function(view, node){
         if(path.bind) path.bind(view, node, scope);
     }
 }
-/*
  * =Template.prototype.getObjectProperty
  * @about   get all path's object property
  * */
-TemplatePrototype.getObjectProperty  = function(view, node, scopes){
-    var parsedTemplate  = view.template.parsed
+TemplatePrototype.getObjectProperty  = function(node, scopes, directive){
+    var template        = this
+        ,parsedTemplate = template.parsed
         ,len            = parsedTemplate.length
         ,objProps       = []
         ,path
@@ -392,7 +302,7 @@ TemplatePrototype.getObjectProperty  = function(view, node, scopes){
     while(len--){
         path    = parsedTemplate[len];
         //if(path.bind)
-        if(path && path.path) objProps.push(path.getObjectProperty(node, scopes));
+        if(path && path.path) objProps.push(path.getObjectProperty(node, scopes, directive));
     }
     if(objProps.length) return objProps//NodeBind(node(s), 'directive', scope, 'template')
     //todo
@@ -402,16 +312,14 @@ TemplatePrototype.getObjectProperty  = function(view, node, scopes){
  * =Template.prototype.unbind
  * @about   walk all path and call path.unbind(view, scope)
  * */
-TemplatePrototype.unbind    = function(view){
-
-}
+TemplatePrototype.unbind    = function(view){}
 /*
  * =Directive
  * */
 function Directive(directive){
-    var _this   = this;
-    _this.origin= directive;
-    _this.parsed = _this.parse(directive);
+    var _this       = this;
+    _this.origin    = directive;
+    _this.parsed    = _this.parse(directive);
 }
 var DirectivePrototype  = Directive.prototype;
 /*
@@ -454,10 +362,8 @@ function View(node, directive, scope, template){
 var ViewPrototype   = View.prototype;
 /*
  * =View.prototype.set
- * */
-ViewPrototype.set   = function(node, directive, scope, template){
-
-}
+ * *
+ViewPrototype.set   = function(node, directive, scope, template){}
 /*
  * =View.prototype.refresh
  * @about   View.render and View.bind
@@ -468,29 +374,22 @@ ViewPrototype.refresh   = function(){
     //model.bind(view, view.refresh);
 }
 /*
- * =View.prototype.get scope
- * @about   all template paths owns same scope
+ * =View.prototype.getValue
  * */
-ViewPrototype.getScopes  = function(){
-    var view        = this
-        ,directive  = view.directive.parsed.type
-        ,node       = view.node
-        ,find       = false
-        ,win        = window
-        ,scopes     = []
-        ,scope
+ViewPrototype.getValue  = function(){
+    var view    = this
+        ;
+    return view.template.getValue(view.node, view.getScopes(), view.directive.parsed.type)
+}
+/*
+ * =View.prototype.getScopes
+ * */
+ViewPrototype.getScopes = function(){
+    var view    = this
+        ,scopes = view.template.getScopes(view.node, view.directive.parsed.type)
         ;
     //absolute scope start with absolute scope
-    if( view.scope ) scopes.push(view.scope);
-    //repeat scope directive will search parentElement
-    if( directive == 'repeat' || directive == 'scope' ) node = node.parentElement;
-    while(node){
-        scope   = node.nbScope;
-        if(scope) scopes.push(scope);
-        node    = node.parentElement;
-    }
-    win.nbScope = win.nbScope || win;
-    scopes.push(win.nbScope);
+    if( view.scope ) scopes.unshift(view.scope);
     return scopes
 }
 /*
@@ -505,9 +404,7 @@ ViewPrototype.render    = function(){//according to directive.type,render view.
         ,parsedDirective    = view.directive.parsed
         ,type               = parsedDirective.type.toLowerCase()
         ,detail             = parsedDirective.detail
-        ,template           = view.template
-        ,scopes             = view.getScopes()
-        ,value              = template.getValue(node, scopes)
+        ,value              = view.getValue()
         ,ELEMENT_NODE       = 1
         ,TEXT_NODE          = 3
         ;
@@ -516,15 +413,15 @@ ViewPrototype.render    = function(){//according to directive.type,render view.
             // if empty set scope as value for example NodeBind(node(s), 'directive', object)
             // it will parse no property and get object[''] == ''
             // but if directive is scope and repeat we means object it self
-            value   = value[0] || scopes[0];
+            value   = value[0] //|| scopes[0];
             if(node.nbScope != value) NodeBind.setTreeScope(node, value);//for absolute scope
         }
     }else if(type == "repeat"){
         if(nodeType == ELEMENT_NODE){
-            value   = value[0] || scopes[0];//todo multi template
+            value   = value[0] //|| scopes[0];//todo multi template
             if(node.nbPrototype){//if node is an instance
                 if(node.nbScope != value) NodeBind.setTreeScope(node, value);
-            }else{
+            }else{//if node is an prototype
                 var len         = value.length
                     ,instances  = node.nbInstances  = node.nbInstances || []
                     ,i,j,item,newNode,lastInstance,nbViews,nbView,viewsLen,pathLen
@@ -546,29 +443,44 @@ ViewPrototype.render    = function(){//according to directive.type,render view.
                         newNode.nbPrototype = node;
                         newNode.nbScope     = node.nbScope;
                         instances.push(newNode);
-                        //walk all child nodes and copy models and views --> render
+                        function getMatchNode(node, path){
+                            var len = path.length
+                                ,i
+                                ;
+                            for(i=0; i<len; i++) node = node.childNodes[path[i]];
+                            return node;
+                        }
+                        var len,nbViews,nbInstances,nbPrototype,nbLastClass,currNewNode;
+                        //walk all child nodes and copy views
                         NodeBind.walkTree(node, function(depth, path){
                             currNode    = this;
-                            if(nbViews = currNode.nbViews){
-                                //find match node in new node
-                                currNewNode = newNode;
-                                for(j=0,pathLen = path.length; j<pathLen; j++)
-                                    currNewNode = currNewNode.childNodes[path[j]];
-                                viewsLen    = nbViews.length;
-                                while(viewsLen--){
-                                    nbView  = nbViews[viewsLen];
-                                    //create and bind view model for current new node, it will cause render
-                                    //current view will be ignore
-                                    if(nbView != self) NodeBind.core(
-                                        currNewNode
+                            var nbViews = currNode.nbViews
+                                ,len,currNewNode,nbView,nbViews,matchNode
+                                ;
+                            if(currNode.nbPrototype){
+                                //delete instances in new node
+                                currNewNode = getMatchNode(newNode, path);
+                                currNewNode.parentNode.removeChild(currNewNode)
+                                //ignore instances and it's children
+                                return false
+                            }else if(nbViews  = currNode.nbViews){
+                                len         = nbViews.length;
+                                matchNode   = getMatchNode(newNode, path);
+                                views       = matchNode.nbViews = [];
+                                while(len--){
+                                    nbView  = nbViews[len];
+                                    views.push(new View(
+                                        matchNode
                                         ,nbView.directive.origin
-                                        ,nbView.scope
+                                        ,nbView.nbScope
                                         ,nbView.template.origin
-                                    )
+                                    ));
                                 }
                             }
+                            //todo nbEvents nbLastClass
                         })
                         lastInstance = newNode;
+                        NodeBind.setTreeScope(lastInstance, value);
                     }
                 }
                 //delete more
@@ -775,19 +687,19 @@ ViewPrototype.bind  = function(target, callback){
  * =View.prototype.unbind
  * @about   remove from view.bindings
  * */
-ViewPrototype.unbind    = function(target){
-
-}
+ViewPrototype.unbind    = function(target){}
 /*
  * =View.prototype.getObjectProperty
  * @about   get all object and Property, template.getObjectProperty <-- path.getObjectProperty
  * */
 ViewPrototype.getObjectProperty  = function(){
-     var self               = this
-        ,node               = self.node
-        ,scopes             = self.getScopes()
+    var view   = this
         ;
-    return self.template.getObjectProperty(self, node, scopes);
+    return view.template.getObjectProperty(
+        view.node,
+        view.getScopes(),
+        view.directive.parsed.type
+    );
 }
 /*
  * =View.prototype.change
@@ -854,8 +766,7 @@ ModelPrototype.update   = function(){//model.object[model.property] = value;
  * @about   if model change model.this method will be call
  * */
 ModelPrototype.change   = function(){
-    var self    = this
-        ,bindings   = self.bindings
+    var bindings    = this.bindings
         ,len        = bindings.length
         ,binding
         ;
@@ -1148,9 +1059,9 @@ nbEventTarget.removeEventListener   = after(_removeEventListener, function(event
  *          if object[property] is array, watch it's new and delete, else watch it's change.
  * */
 ModelPrototype.refreshListener  = function(){
-    var self        = this
-        ,object     = self.object
-        ,property   = self.property
+    var model       = this
+        ,object     = model.object
+        ,property   = model.property
         ;
     if(property === '') return//only watch definate property
 
@@ -1168,7 +1079,7 @@ ModelPrototype.refreshListener  = function(){
                 //});
                 //use dirty check for array new and delete
                 dirtyWatch( object[property], 'length', function(){
-                    self.change.call(self)
+                    model.change.call(model)
                 })
             }
         }
@@ -1182,14 +1093,14 @@ ModelPrototype.refreshListener  = function(){
                     var oldValue    = _value
                     _value          = value;
                     observeArray(object, property);
-                    self.change();
+                    model.change();
                 },
                 configurable : true
             })
         }catch(e){//use dirty watch as fallback
             dirtyWatch( object, property, function(){
                 observeArray(object, property);
-                self.change.call(self)
+                model.change.call(model)
             })
         }
         observeArray(object, property);
