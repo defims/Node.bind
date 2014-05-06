@@ -1,22 +1,310 @@
 <!doctype html>
 <head>
-    <script src="../Node.bind.js"></script>
+    <script src="../../DefineProperty.polyfill/DefineProperty.polyfill.js"></script>
+    <!--<script src="../Node.bind.min.js"></script>-->
+    <script src="../src/Node.bind.js"></script>
 </head>
 <body>
-<div id='node'>3</div>
+    <div id='textContent'></div>
+    <div id='textContent1'></div>
+    <div id='textContent2'></div>
+    <div id='textContent3'></div>
+    <div id='attributeId'></div>
+    <div id='attributeClass'></div>
+    <div id='attributeClass1' class="class0"></div>
+    <div id='attributeClass2'></div>
+    <div id='attributeStyle'></div>
+    <div id='attributeStyle1'></div>
+    <div id='attributeStyleTop' style="position:relative; width:1em; height:1em; background-color:green;"></div>
+    <div id='attributeCustom'></div>
+    <input type="text" id='attributeValue'/>
+    <div id='dataset'></div>
+    <div id='event'>event</div>
+    <div id='event1'>event1</div>
+    <div id='event2'>event2</div>
+    <div id='event3'>event3</div>
+    <div id='scope'>
+        <div id='childScope'>
+            <div id='scopeItem'></div>
+        </div>
+    </div>
+    <div class='repeat'>
+        <div class='childRepeat'>
+            <div class='textContent'></div>
+            <div class='textContent1'>*</div>
+        </div>
+    </div>
+    <div id='textNode'>textNode</div>
+
+<div id='elementBoolean'></div>
+<div id='elementNumber'></div>
 <script>
-var node    = document.getElementById('node');
-var data = {
-    path : {
-        to : {
-            value : 'content'
+var data ={
+    obj     : {
+        path    : [{
+            to  : [{
+                value : 'content'
+            }]
+        }]
+        ,value  : 'value'
+    },
+    repeat  : [
+        ['a','b']
+        ,['c','d']
+    ],
+    bool    : true,
+    num     : 90,
+    handle  : function(){
+        //observe(target, callback);
+    },
+    attribute  : {
+        id      : 'initId',
+        "class" : {
+            "string"    : 'class1 class2'
+            ,"array"     : ['class1', 'class2']
+            ,"object"    : {'class1': 'objClass1', 'class2' : 'objClass2'},
+        },
+        style   : {
+            "string"    : "display:block; backgroundColor: red; width: 2em; height: 2em;",
+            "object"    : {
+                display         : 'block',
+                position        : 'relative',
+                width           : '1em',
+                height          : '1em',
+                backgroundColor : 'red'
+            }
+        },
+        styleTop    : {
+            top : '1em'
+        },
+        custom  : 'value',
+        value   : 'input value'
+    },
+    dataset     : {
+        foo     : 'bar'
+    },
+    event       : {
+        click   : function(){ console.log('click') },
+        click2  : function(){ console.log('click2') }
+    },
+    scope       : {
+        path    : {
+            to  : {
+                data : 'value'
+            }
         }
     }
 };
+var $   = function(selector){
+    return document.querySelectorAll(selector)
+}
+
+
+/*
+ * = built-in directive
+ * textContent
+ * attributes
+ * dataset
+ * event
+ * scope
+ * repeat
+ */
+
+/*
+ * =textContent directive
+ * @about   most usable directive, {{}} need for template parse, object is the scope of template,
+ *          if it's undefined , it will search the parent element, top is window.
+ * @usage   ElementBind(element(s), 'directive', pathScope, 'template');
+ * *
+NodeBind($('#textContent'), 'textContent', data, '{{obj.path[0].to[0].value}}');
+NodeBind($('#textContent1'), 'textContent', data.obj, '{{path[0].to[0].value}} and {{value}}');
+NodeBind($('#textContent2'), 'textContent', data.obj.path[0].to[0], '{{value}}');
+/**/
+
+
+/*
+ * =attributes directive
+ * @about   it will change the node's attribute,
+ *          if directive is attribute.class and template binding data is Array,
+ *          Array.join(' ') will be called before.
+ *          if directive is attribute.style and template binding data is Object,
+ *          Object will be rendered to "display: block;" like string.
+ *          if directive is attribute.style, only the given style will be cover, others will remain
+ *          other attribute will refer to original node.attributes
+ *          always two way binding, multi template will be the same, always match the template.
+ * @usage   NodeBind(node(s), 'directive', pathScope, 'template');
+ *
+NodeBind($('#attributeId'), 'attribute.id', data.attribute, '{{id}}');
+NodeBind($('#attributeClass'), 'attribute.class', data.attribute, '{{class.string}}');
+NodeBind($('#attributeClass1'), 'attribute.class', data.attribute, '{{class.array}}');
+NodeBind($('#attributeClass2'), 'attribute.class', data.attribute, '{{class2}}');
+NodeBind($('#attributeStyle'), 'attribute.style', data.attribute, '{{style.string}}');
+NodeBind($('#attributeStyle1'), 'attribute.style', data.attribute, '{{style.object}}');
+NodeBind($('#attributeStyleTop'), 'attribute.style.top', data.attribute.styleTop, '{{top}}');
+NodeBind($('#attributeValue'), 'attribute.value', data.attribute, '{{value}}');
+NodeBind($('#attributeCustom'), 'attribute.custom.define', data.attribute, '{{custom}}');
+/**/
+
+
+/*
+ * = dataset directive
+ * @about   dataset.data.set.content will point to attribute data-data-set-content
+ * @usage   ElementBind(element(s), directive, pathScope, 'template');
+ */
+NodeBind($('#dataset'), 'dataset.data.set.content', data.dataset, '{{foo}}');
+/**/
+
+
+/*
+ * =event binding
+ * @about   it will bind event and will fixed some problem on different browsers,
+ *          prefix free is supported in directive.
+ *          if property is undefined, absolute event will be binded,
+ *          property is relative.
+ *          target event will be {{}}
+ *          as event callback must be function, string template will be ignore,
+ *          for example: '{{click}} click1 {{click2}}' --> [path,'click1',path]
+ *          'click1' will be ignored
+ * @usage   ElementBind(element(s), 'directive', propertyScope, 'property');
+ */
+NodeBind($('#event'), 'event.click', data.event, '{{click}}');//will watch data.event.click
+//NodeBind($('#event1'), 'event.click', data.event.click);//keep data.event.click unwatch
+NodeBind($('#event2'), 'event.click', data.event, '{{click}}{{click2}}');
+NodeBind($('#event3'), 'event.transitionEnd', data.event, 'transitionEnd');
+/**/
+
+/*
+ * =scope
+ * @about   it will set model for element, and set element model will trigger scopeBinding,
+ *          if parent element binded a scope, child binding will inhert it.
+ *          it's a invisible directive, so no need for userdefined
+ *          root scope is window.
+ * @usage   scope:  ElementBind(element(s), 'directive', object);
+ *          child:  ElementBind(element(s), 'directive', 'template');
+ * */
+//NodeBind($('#scope'), 'scope', data, '{{scope}}');//will watch data.scope
+//NodeBind($('#scope'), 'scope', data.scope);//keep data.scope unwatch
+NodeBind($('#scope'), 'scope', '{{data}}');//relative scope
+NodeBind($('#childScope'), 'scope', '{{scope}}');//relative scope
+NodeBind($('#scopeItem'), 'textContent', '{{path.to.data}}');
+/**/
+
+/*
+ * = repeat
+ * @about   it will repeat the element and bind the child bindings for new element,
+ *          each repeat element will own a scope,
+ * @usage   NodeBind(element(s), 'directive', scope, 'template')
+ */
+//NodeBind($('.repeat'), 'repeat', data, '{{repeat}}');//watch data.arr
+//NodeBind($('.repeat'), 'repeat', data.repeat);//keep data.arr unwatch
+NodeBind($('.repeat'), 'repeat', '{{data.repeat}}');//relative repeat scope
+NodeBind($('.repeat .childRepeat'), 'repeat', '{{$index}}')
+NodeBind($('.repeat .childRepeat .textContent'), 'textContent', '{{$index}}')
+//NodeBind($('.repeat .childRepeat .textContent1'), 'textContent', '{{$index}}')
+/**/
+
+/*
+ * =nodeValue
+ * @about   actually, above directive is use for element, and this directive test textNode
+ *          NodeBind(element(s), 'textContent', scope, 'template') will overwrite the children
+ *          of element.
+ */
+//NodeBind($('#textNode')[0].childNodes, 'nodeValue', data, '{{obj.path[0].to[0].value}}');
+
+/*
+ * = todo custom binding
+ *   all directives will turn to call this function
+ *   use for custom directive
+ *
+NodeBind.binding = function(element, directive, object, template){//custom bind for follow use
+    if(directive == 'repeat'){
+        console.log('hi')
+        //handle
+    }else ElementBind.prototype.bind.apply(this, arguments);
+}
+/**/
+
+/*
+ * = todo unbind
+ * @about   ElementBind will return a binding which can be use in ElementBind.unbind
+ *
+var bindId  = ElementBind($('#unbind'), 'textContent', data.textContent.path[0].to[0], 'value');
+ElementBind.unbind(bindId);
+/**/
+
+
+
+//NodeBind(document.getElementById('elementObject'), 'textContent', data, '{{obj.path[0].to[0].value}}');
 //Node(node, 'textContent').bind(data, 'content');
 //Node(node).bind('textContent', data, 'content');
 //data.path.to.value    = 'hi';
-NodeBind(node).bind(data);
+//NodeBind(document.getElementById('elementObject')).bind('data');
+//NodeBind(document.getElementById('nestScope')).bind('obj');
+//NodeBind(document.getElementById('objectChild')).bind('path[0].to[0].value');
+//NodeBind(document.getElementById('objectChild2')).bind('arr[0]');//#nestScope's nodeBindData hasn't arr[0],so search parentScope and find data.arr[0]
+//if Array item is bind before, after binding will replace it
+//NodeBind(document.getElementsByClassName('elementArray')).bind('data.arr');
+//NodeBind(document.getElementsByClassName('arrayChild')).bind('$i');/*$i will be replaced with the repeat index*/
+
+//NodeBind(document.getElementById('elementBoolean')).bind('data.bool');
+//NodeBind(document.getElementById('elementNumber')).bind('data.num');
+/**/
+setTimeout(function(){
+    data.obj.path[0].to[0].value = 'modify content';
+    //data.repeat[0]     = 3;
+    //data.arr[4]     = 4;
+    //data.arr[9]     = 9;
+    data.repeat.push(['e','f','g'])
+    data.scope.path.to.data = 'modify data';
+    //data.attribute.id               = 'changeId';
+    //data.attribute.class.string     = 'c1 c2';
+    //data.attribute.class.array.push('class3');
+    //data.attribute.class.array.push('class4');
+    //data.attribute.class.array.pop();
+    //data.attribute.class2           = { 'class1' : 'o1','class2' : 'o2'};//replace the whole className
+    //data.attribute.style.string     = "backgroundColor: blue";//only replace exist items
+    //data.attribute.style.object     = {backgroundColor: 'blue'};//only replace exist items
+    //data.attribute.style.object.backgroundColor    = 'blue';//failed
+    //data.attribute.styleTop.top     = '2em';
+    //data.attribute.value            = 'modify value';
+    //data.dataset.foo                = 'modify bar';
+    //console.log('modify data.event.click')
+    data.event.click                = function(){//modify
+        console.log('modify click event', this.nbViews["event_click"].getValue())
+    }
+    //data.arr    = [11,12,'a','b'];
+    //data.bool   = false;
+    //data.num    = 100;
+    //data.arr[0] = 20;
+    //data.arr.push(5);
+    //data.arr.push(6);
+    //data.arr.push(9);
+    //data.arr.push({a: 3});
+    ////data.arr[4] = 5;
+    //console.log(data.arr)
+    //data.arr.push(6);
+    //data.arr.pop();
+    //data.arr.push({"foo":"bar"})
+    //data.arr.push({"foo":"bar"})
+    //data.arr[2] = 4;
+},1000)
+/*
+setTimeout(function(){
+    data.repeat.push(['g','h'])
+},3000)
+*/
+/**
+document.addEventListener('click', function(){
+    data.obj.path[0].to[0].value = 'click';
+    data.arr[5]     = 'hi i am 5';
+})
+/**/
+/**
+setTimeout(function(){
+    data.arr    = ['c', 'd'];
+    data.arr[1] = 88
+},2000)
+/**/
 </script>
 <script>
 /*
@@ -25,7 +313,13 @@ object(object).attribute    = node(node).attribute;
 node(node)[attribute]       = object(object)[attribute];
 object(object)[attribute]   = node(node)[attribute];
 */
-
+/*
+Bind(Element, 'attribute', object, 'property');
+Bind.prototype.bind = function(name, object, property){
+    if(name == 'myBinding'){
+    }else Bind.prototype.prototype.bind.call(this, name, object, property);
+}
+*/
 /*
 Node(node,attribute).bind(object,attribute)
 *

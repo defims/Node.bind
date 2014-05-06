@@ -1,195 +1,351 @@
 #Node.bind
 
-##Node Binding Rule:
+##How it works
 
-* ELEMENT.bind
-    * Array:
-        * repeat to Array.length with a DOCUMENTFRAGMENT wraped this ELEMENT, set scope to each repeated ELEMENT.
+this library use property assessor for exist property and dirty watch as fallback, dirty watch will inject event loop callback to check dirty.
 
-    * Object:
-        * set scope to this ELEMENT.
+##process:
 
-    * Boolean:
-        * set visiblity of this ELEMENT.
+    +------------------------------------------------------------+
+    |   <div                                                     |\
+    |       data-bind-textContent="{{obj.path[0].to[0].value}}"  | \
+    |       data-bind-attribute-id=""                            +--+
+    |       data-bind-attribute-class=""                            |
+    |       data-bind-attribute-style=""                            |
+    |       data-bind-attribute-style-top=""                        |
+    |       data-bind-attribute-custom-define=""                    |
+    |       data-bind-dataset-a-b=""                                |
+    |       data-bind-event-click=""                                |
+    |   ></div>                                                     |
+    |   <input                                                      |
+    |       data-bind-attribute-value=""                            |
+    |   />                                                          |
+    |   <ul>                                                        |
+    |       <li                                                     |
+    |           data-bind-repeat=""                                 |
+    |       >elementArray</li>                                      |
+    |   </ul>                                                       |
+    +-------------------------------+-------------------------------+
+                                    |
+                                generate
+                                    |
+                                    V
+                NodeBind(node(s), 'directive', scope, 'template')
+                                    |
+                                 compile
+                                    |
+                                    V
+                             -->---->----->--
+                          /                    \
+                       change                render
+                         |                      |
+                         |                      v
+                    +---------+            +--------+
+                    |  model  |            |  view  |
+                    +---------+            +--------+
+                         ^                      |
+                         |                      |
+                       update                 change
+                          \                    /
+                             --<----<-----<--
 
-    * Undefined,Null:
-        * hide this ELEMENT.
 
-    * Number,String:
-        * set textContent of this ELEMENT.
+##concepts
 
-    * Function:
-        * set handle function of this ELEMENT, observe(target, callback) method can be call in the function.
+###scope
 
-* ATTRIBUTE.bind
-    * Array:
-        * if ATTRIBUTE is class and Array item is Number,String,Boolean,Undefined or Null, nodeValue of ATTRIBUTE will be setted as Array.join(' ').
+scope is mapping to markup.
 
-    * Object:
-        * if ATTRIBUTE is style and Object item is Number,String,Boolean,Undefined or Null, nodeValue of ATTRIBUTE will be set css like string of this Object.
-        * if ATTRIBUTE is dataset and Object item is Number,String,Boolean,Ubdefined or Null, dataset of ELEMENT will be set.
+the scopes of scope and repeat inhert form their parent element, because they define the scope.
+root scope is window, it means define varible directly will affect the root scope.
+others inhert form the nearest parentNode's scope.
 
-    * Boolean:
-        * if ATTRIBUTE is checked, nodeValue will be toggle to checked or empty.
-        * if ATTRIBUTE is disabled, nodeValue will be toggle to empty or disabled.
-        * if ATTRIBUTE is readonly, nodeValue will be toggle to readonly or empty.
-        * otherwise,toggle nodeValue of this ATTRIBUTE empty or not.
+chain inhert scope is nice (todo).
 
-    * Undefined,Null:
-        * set nodeValue of this ATTRIBUTE empty.
+####markup statement example
 
-    * Number,String:
-        * set nodeValue of this ATTRIBUTE.
+    +---------------------------------------------------------------------------------------+
+    |                                                                                       |
+    |   +-------+                         +---------------------------------------------+   |
+    |   |   <li | data-repeat="{{array}}" | data-attr-src="{{$index.foo.bar}}.jpg">     |   |
+    |   |       +-------------------------+                                             |   |
+    |   |   </li>                                                                       |   |
+    |   +-------------------------------------------------------------------------------+   |
+    |                                                                                       |
+    |   +--------+                          +-------+                                       |
+    |   |   <div |  data-scope="{{object}}" | >     |                                       |
+    |   |        +--------------------------+       |                                       |
+    |   |       {{a.b.c}} + {{a.b.d}} = {{a.b.e}}   |                                       |
+    |   |       <span>{{a.b.f}}</span>              |                                       |
+    |   |   </div>                                  |                                       |
+    |   +-------------------------------------------+                                       |
+    +---------------------------------------------------------------------------------------+
 
-    * Function:
-        * set handle function of this ATTRIBUTE, observe(target, callback) method can be call in the function.
+###model
 
-* TEXT.bind
-    * Array:
-        * if Array item is Number,String,Boolean,Undefined or Null, nodeValue of TEXT will be setted as Array.join().
+model is javascript varible, it store object and property inside for observe.
+it also provide method to refresh listener when object or property change.
+the magic observer is assessor and callback inject.
 
-    * Object:
-        * set nodeValue of TEXT JSON.stringify(Object).
+###assessor
 
-    * Boolean:
-        * set nodeValue of this TEXT 'true' or 'false'.
+defineProperty is use for exist property , after compile NodeBind to model, model.refreshListener will be call, and defineProperty will be apply to the model.
 
-    * Undefined,Null:
-        * set nodeValue of this TEXT empty.
+###event loop
 
-    * Number,String:
-        * set nodeValue of this TEXT.
+                                +----------+  +----------------+  +----------+        +---+
+               threads          |  timer   |  |  event trigger |  |   ajax   |        |...|
+                                +----------+  +----------------+  +----------+        +---+
+                                     |               |                  |              |||
+                                     v               v                  v              vvv
+      -<-[javascript statement][timer callback][event callback][http request callback][...]-<-
+    /                                                                                          \
+    \                                      event loop                                          /
+      ----------------------------------------------------------------------------------------
 
-    * Function:
-        * set handle function of this ATTRIBUTE, observe(target, callback) method can be call in the function.
+###callback inject
 
-* CDATASECTION.bind
-    * ignore
+this library use aop(aspect oriented programming) in callback inject, so when callback fire, a dirty check function can be call.
 
-* ENTITYREFERENCE.bind
-    * ignore
+      --<--[javascript statement][timer|event|http request callback + dirty check][...]--<--
 
-* ENTITY
-    * ignore
+###view
 
-* PROCESSINGINSTRUCTION.bind
-    * ignore
+####markup statement example
 
-* COMMENT.bind
-    * ignore
+        +--------------------------+    +----------------------------------------+
+    <li | data-repeat="{{repeat}}" |    | data-attr-src="{{$index.foo.bar}}.jpg" | ></li>
+        +--------------------------+    +----------------------------------------+
+         +-------------------------+
+    <div | data-scope="{{object}}" | >
+         +-------------------------+
+      +-----------------------------------+
+      | {{a.b.c}} + {{a.b.d}} = {{a.b.e}} |
+      +-----------------------------------+
+            +---------+
+      <span>|{{a.b.f}}|</span>
+            +---------+
+    </div>
 
-* DOCUMENT.bind
-    * ignore
+this library just provide the NodeBind method for render, and the markup is just an example to explain what a view is.
 
-* DOCUMENTTYPE.bind
-    * ignore
+####directive
 
-* DOCUMENTFRAGMENT.bind
-    * ignore
-#Node.bind
+directive tell view how to render
 
-##Node Binding Rule:
+#####built-in directives
 
-* ELEMENT.bind
-    * Array:
-        * repeat to Array.length with a DOCUMENTFRAGMENT wraped this ELEMENT, set scope to each repeated ELEMENT.
+* scope
+* repeat
+* textContent
+* attribute
+* dataset
+* event
+* nodeValue
 
-    * Object:
-        * set scope to this ELEMENT.
+#####custom directive (todo)
 
-    * Boolean:
-        * set visiblity of this ELEMENT.
+###template
 
-    * Undefined,Null:
-        * hide this ELEMENT.
+####markup statement example
 
-    * Number,String:
-        * set textContent of this ELEMENT.
+                     +---------+                 +----------------------+
+    <li data-repeat="|{{array}}|" data-attr-src="|{{$index.foo.bar}}.jpg|" ></li>
+                     +---------+                 +----------------------+
+                     +----------+
+    <div data-scope="|{{object}}|" >
+                     +----------+
+      +-----------------------------------+
+      | {{a.b.c}} + {{a.b.d}} = {{a.b.e}} |
+      +-----------------------------------+
+            +---------+
+      <span>|{{a.b.f}}|</span>
+            +---------+
+    </div>
 
-    * Function:
-        * set handle function of this ELEMENT, observe(target, callback) method can be call in the function.
+###path
 
-* ATTRIBUTE.bind
-    * Array:
-        * if ATTRIBUTE is class and Array item is Number,String,Boolean,Undefined or Null, nodeValue of ATTRIBUTE will be setted as Array.join(' ').
+####markup statement example
 
-    * Object:
-        * if ATTRIBUTE is style and Object item is Number,String,Boolean,Undefined or Null, nodeValue of ATTRIBUTE will be set css like string of this Object.
-        * if ATTRIBUTE is dataset and Object item is Number,String,Boolean,Ubdefined or Null, dataset of ELEMENT will be set.
+                       +-----+                     +--------------+
+    <li data-repeat="{{|array|}}" data-attr-src="{{|$index.foo.bar|}}.jpg" ></li>
+                       +-----+                     +--------------+
+                       +------+
+    <div data-scope="{{|object|}}" >
+                       +------+
+          +-----+       +-----+         +-----+
+        {{|a.b.c|}} + {{|a.b.d|}}   = {{|a.b.e|}}
+          +-----+       +-----+         +-----+
+                +-----+
+        <span>{{|a.b.f|}}</span>
+                +-----+
+    </div>
 
-    * Boolean:
-        * if ATTRIBUTE is checked, nodeValue will be toggle to checked or empty.
-        * if ATTRIBUTE is disabled, nodeValue will be toggle to empty or disabled.
-        * if ATTRIBUTE is readonly, nodeValue will be toggle to readonly or empty.
-        * otherwise,toggle nodeValue of this ATTRIBUTE empty or not.
+####built-in code
 
-    * Undefined,Null:
-        * set nodeValue of this ATTRIBUTE empty.
+* $index $index is use as repeat inde
 
-    * Number,String:
-        * set nodeValue of this ATTRIBUTE.
+####filter (todo)
 
-    * Function:
-        * set handle function of this ATTRIBUTE, observe(target, callback) method can be call in the function.
+path can own filter
 
-* TEXT.bind
-    * Array:
-        * if Array item is Number,String,Boolean,Undefined or Null, nodeValue of TEXT will be setted as Array.join().
+##node data
 
-    * Object:
-        * set nodeValue of TEXT JSON.stringify(Object).
+node data store in dom with nb prefix like:
 
-    * Boolean:
-        * set nodeValue of this TEXT 'true' or 'false'.
+    document.getElementById('scope').nbScope
 
-    * Undefined,Null:
-        * set nodeValue of this TEXT empty.
+###built-in node data
 
-    * Number,String:
-        * set nodeValue of this TEXT.
+ * nbScope
+ * nbViews
+ * nbModels
+ * nbEvents
+ * nbInstances
+ * nbPrototype
+ * nbLastClass
 
-    * Function:
-        * set handle function of this ATTRIBUTE, observe(target, callback) method can be call in the function.
+##Usage
 
-* CDATASECTION.bind
-    * ignore
+###generate
 
-* ENTITYREFERENCE.bind
-    * ignore
+    walk the document and run  NodeBind by youself, you can use your favorate tag
 
-* ENTITY
-    * ignore
+###compile
 
-* PROCESSINGINSTRUCTION.bind
-    * ignore
+    compile use the global api NodeBind like:
 
-* COMMENT.bind
-    * ignore
+    NodeBind(node(s), 'directive', scope, 'template');
+    NodeBind(node(s), 'directive', 'template');
 
-* DOCUMENT.bind
-    * ignore
+######textContent
 
-* DOCUMENTTYPE.bind
-    * ignore
+    @about   most usable directive, {{}} need for template parse, object is the scope of template,
+             if it's undefined , it will search the parent element, top is window.
+    @usage   ElementBind(element(s), 'directive', pathScope, 'template');
 
-* DOCUMENTFRAGMENT.bind
-    * ignore
+    NodeBind($('#textContent'), 'textContent', data, '{{obj.path[0].to[0].value}}');
+    NodeBind($('#textContent1'), 'textContent', data.obj, '{{path[0].to[0].value}} and {{value}}');
+    NodeBind($('#textContent2'), 'textContent', data.obj.path[0].to[0], '{{value}}');
 
-* NOTATION.bind
-    * ignore
+######attribute
 
-##Usage:
-    because when call Node(node).bind(targetName), if target type is Function,Array or Object , bind function will get the address of target, and detect changes of it. if target type is Number,String or Boolean, a copy of target will be translate. so type of bind function'argument is a string.
+    @about   it will change the node's attribute,
+             if directive is attribute.class and template binding data is Array,
+             Array.join(' ') will be called before.
+             if directive is attribute.style and template binding data is Object,
+             Object will be rendered to "display: block;" like string.
+             if directive is attribute.style, only the given style will be cover, others will remain
+             other attribute will refer to original node.attributes
+             always two way binding, multi template will be the same, always match the template.
+    @usage   NodeBind(node(s), 'directive', pathScope, 'template');
 
-    var node = document.getElementById('node');
-    var data = [1,2,3];
-    Node(node).bind('data');
-* NOTATION.bind
-    * ignore
+    NodeBind($('#attributeId'), 'attribute.id', data.attribute, '{{id}}');
+    NodeBind($('#attributeClass'), 'attribute.class', data.attribute, '{{class.string}}');
+    NodeBind($('#attributeClass1'), 'attribute.class', data.attribute, '{{class.array}}');
+    NodeBind($('#attributeClass2'), 'attribute.class', data.attribute, '{{class2}}');
+    NodeBind($('#attributeStyle'), 'attribute.style', data.attribute, '{{style.string}}');
+    NodeBind($('#attributeStyle1'), 'attribute.style', data.attribute, '{{style.object}}');
+    NodeBind($('#attributeStyleTop'), 'attribute.style.top', data.attribute.styleTop, '{{top}}');
+    NodeBind($('#attributeValue'), 'attribute.value', data.attribute, '{{value}}');
+    NodeBind($('#attributeCustom'), 'attribute.custom.define', data.attribute, '{{custom}}');
 
-##Usage:
-    because when call Node(node).bind(targetName), if target type is Function,Array or Object , bind function will get the address of target, and detect changes of it. if target type is Number,String or Boolean, a copy of target will be translate. so type of bind function'argument is a string.
 
-    var node = document.getElementById('node');
-    var data = [1,2,3];
-    Node(node).bind('data');
+######dataset
+
+    @about   dataset.data.set.content will point to attribute data-data-set-content
+    @usage   ElementBind(element(s), directive, pathScope, 'template');
+
+    NodeBind($('#dataset'), 'dataset.data.set.content', data.dataset, '{{foo}}');
+
+
+
+######event
+
+    @about   it will bind event and will fixed some problem on different browsers,
+             prefix free is supported in directive.
+             if property is undefined, absolute event will be binded,
+             property is relative.
+             target event will be {{}}
+             as event callback must be function, string template will be ignore,
+             for example: '{{click}} click1 {{click2}}' --> [path,'click1',path]
+             'click1' will be ignored
+    @usage   ElementBind(element(s), 'directive', propertyScope, 'property');
+
+    NodeBind($('#event'), 'event.click', data.event, '{{click}}');//will watch data.event.click
+    //NodeBind($('#event1'), 'event.click', data.event.click);//keep data.event.click unwatch
+    NodeBind($('#event2'), 'event.click', data.event, '{{click}}{{click2}}');
+    NodeBind($('#event3'), 'event.transitionEnd', data.event, 'transitionEnd');
+
+
+######scope
+
+    @about   it will set model for element, and set element model will trigger scopeBinding,
+             if parent element binded a scope, child binding will inhert it.
+             it's a invisible directive, so no need for userdefined
+             when call view.getScope , a scope chain will return
+             root scope is window.
+    @usage   scope:  ElementBind(element(s), 'directive', object);
+             child:  ElementBind(element(s), 'directive', 'template');
+
+    NodeBind($('#scope'), 'scope', data, '{{scope}}');//will watch data.scope
+    //NodeBind($('#scope'), 'scope', data.scope);//keep data.scope unwatch
+    NodeBind($('#scopeItem'), 'textContent', '{{path.to.data}}');
+
+
+######repeat
+
+    @about   it will repeat the element and bind the child bindings for new element,
+             each repeat element will own a scope,
+    @usage   NodeBind(element(s), 'directive', scope, 'template')
+
+    NodeBind($('.repeat'), 'repeat', data, '{{arr}}');//watch data.arr
+    NodeBind($('.repeat'), 'repeat', data.arr);//keep data.arr unwatch
+    NodeBind($('.repeat .textContent'), 'textContent', '{{$index}}')
+    NodeBind($('.repeat .textContent1'), 'textContent', '{{$index}}')
+
+
+######nodeValue
+
+    @about   actually, above directive is use for element, and this directive test textNode
+             NodeBind(element(s), 'textContent', scope, 'template') will overwrite the children
+             of element.
+
+    NodeBind($('#textNode')[0].childNodes, 'nodeValue', data, '{{obj.path[0].to[0].value}}');
+
+
+###custom binding (todo)
+
+  @about    all directives will turn to call this function
+            use for custom directive
+
+    NodeBind.binding = function(element, directive, object, template){//custom bind for follow use
+        if(directive == 'repeat'){
+            console.log('hi')
+            //handle
+        }else ElementBind.prototype.bind.apply(this, arguments);
+    }
+
+###unbind (todo)
+
+    @about   ElementBind will return a binding which can be use in ElementBind.unbind
+
+    var bindId  = ElementBind($('#unbind'), 'textContent', data.textContent.path[0].to[0], 'value');
+    ElementBind.unbind(bindId);
+
+###utility
+
+####NodeBind.walkTree
+####NodeBind.core
+####NodeBind.setTreeScope
+
+
+##example
+    see demo/
+
+##roadmap
+
+* view <=> model <=> model
+* Object.observe as listener
+* event callback scope modify support
+* directly view modify support

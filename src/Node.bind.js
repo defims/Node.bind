@@ -152,7 +152,11 @@ PathPrototype.getObjectProperty = function(node, scopes, directive){
         ,object     = {}
         ,property,i
         ;
+<<<<<<< HEAD
     if(item.getValue) item = item.getValue(node, directive);
+=======
+    if(item.getValue) item = item.getValue(node);
+>>>>>>> 6dba0261702096ee48a45e977b95d66e1ab4bcc2
     //find scope accord the first item
     for( i=0; i<scopeLen; i++){
         scope = scopes[i];
@@ -450,8 +454,12 @@ ViewPrototype.render    = function(){//according to directive.type,render view.
                             for(i=0; i<len; i++) node = node.childNodes[path[i]];
                             return node;
                         }
+<<<<<<< HEAD
                         var removeNodes = []
                             ,removeNode,nbViews,nbInstances,nbPrototype,nbLastClass,currNewNode;
+=======
+                        var nbViews,nbInstances,nbPrototype,nbLastClass,currNewNode;
+>>>>>>> 6dba0261702096ee48a45e977b95d66e1ab4bcc2
                         //walk all child nodes and copy views
                         NodeBind.walkTree(node, function(depth, path){
                             currNode    = this;
@@ -460,14 +468,22 @@ ViewPrototype.render    = function(){//according to directive.type,render view.
                                 ;
                             if(currNode.nbPrototype){
                                 //delete instances in new node
+<<<<<<< HEAD
                                 //if remove nodes now , path will work failed
                                 removeNodes.push(getMatchNode(newNode, path));
+=======
+                                currNewNode = getMatchNode(newNode, path);
+                                currNewNode.parentNode.removeChild(currNewNode)
+>>>>>>> 6dba0261702096ee48a45e977b95d66e1ab4bcc2
                                 //ignore instances and it's children
                                 return false
                             }else if(nbViews  = currNode.nbViews){
                                 matchNode   = getMatchNode(newNode, path);
                                 _nbViews    = matchNode.nbViews = {};
+<<<<<<< HEAD
                                 matchNode.nbModels  = [];
+=======
+>>>>>>> 6dba0261702096ee48a45e977b95d66e1ab4bcc2
                                 for(k in nbViews){
                                     nbView              = nbViews[k];
                                     directive           = nbView.directive.origin;
@@ -481,6 +497,7 @@ ViewPrototype.render    = function(){//according to directive.type,render view.
                             }
                             //todo nbEvents nbLastClass
                         })
+<<<<<<< HEAD
                         //remove removeNodes
                         while(removeNode = removeNodes.pop())
                             removeNode.parentNode.removeChild(removeNode);
@@ -488,6 +505,11 @@ ViewPrototype.render    = function(){//according to directive.type,render view.
                         NodeBind.setTreeScope(lastInstance, value);
                     }
                     lastInstance.nbIndex    = i;
+=======
+                        lastInstance = newNode;
+                        NodeBind.setTreeScope(lastInstance, value);
+                    }
+>>>>>>> 6dba0261702096ee48a45e977b95d66e1ab4bcc2
                 }
                 //delete more
                 len -= 2;
@@ -666,7 +688,11 @@ ViewPrototype.getBinding   = function(target){
         ;
     while(len--){
         binding = bindings[len];
+<<<<<<< HEAD
         if(binding && binding.target == target){
+=======
+        if(binding.target == target){
+>>>>>>> 6dba0261702096ee48a45e977b95d66e1ab4bcc2
             has = true;
             break;
         }
@@ -678,10 +704,14 @@ ViewPrototype.getBinding   = function(target){
         }
         bindings.push(binding)
     }
+<<<<<<< HEAD
     return {
         "binding"   : binding
         ,"index"    : len
     }
+=======
+    return binding
+>>>>>>> 6dba0261702096ee48a45e977b95d66e1ab4bcc2
 }
 /*
  * =View.prototype.bind
@@ -689,12 +719,17 @@ ViewPrototype.getBinding   = function(target){
  *          A <- B if B change call A's function --> B.bind(A)
  * * */
 ViewPrototype.bind  = function(target, callback){
+<<<<<<< HEAD
     this.getBinding(target).binding.callback    = callback;
+=======
+    this.getBinding(target).callback    = callback;
+>>>>>>> 6dba0261702096ee48a45e977b95d66e1ab4bcc2
 }
 /*
  * =View.prototype.unbind
  * @about   remove from view.bindings
  * */
+<<<<<<< HEAD
 ViewPrototype.unbind    = function(target){
     var view    = this
         ,index  = view.getBinding(target).index
@@ -702,6 +737,9 @@ ViewPrototype.unbind    = function(target){
     //if index < 0 means not find target
     if(index >= 0) view.bindings.splice(index, 1);
 }
+=======
+ViewPrototype.unbind    = function(target){}
+>>>>>>> 6dba0261702096ee48a45e977b95d66e1ab4bcc2
 /*
  * =View.prototype.getObjectProperty
  * @about   get all object and Property, template.getObjectProperty <-- path.getObjectProperty
@@ -775,11 +813,14 @@ ModelPrototype.set  = function(value){
 ModelPrototype.update   = function(){//model.object[model.property] = value;
 
 }
+<<<<<<< HEAD
 ModelPrototype.getValue = function(){
     var model   = this
         ;
     return model.object[model.property];
 }
+=======
+>>>>>>> 6dba0261702096ee48a45e977b95d66e1ab4bcc2
 /*
  * =Model.prototype.change
  * @about   if model change model.this method will be call
@@ -1137,7 +1178,11 @@ ModelPrototype.getBinding   = function(target){
         ;
     while(len--){
         binding = bindings[len];
+<<<<<<< HEAD
         if(binding && binding.target == target){
+=======
+        if(binding.target == target){
+>>>>>>> 6dba0261702096ee48a45e977b95d66e1ab4bcc2
             has = true;
             break;
         }
@@ -1149,10 +1194,14 @@ ModelPrototype.getBinding   = function(target){
         }
         bindings.push(binding)
     }
+<<<<<<< HEAD
     return {
         "binding"   : binding
         ,"index"    : len
     }
+=======
+    return binding
+>>>>>>> 6dba0261702096ee48a45e977b95d66e1ab4bcc2
 }
 /*
  * =Model.prototype.bind
@@ -1160,17 +1209,26 @@ ModelPrototype.getBinding   = function(target){
  *          A <- B if B change call A's function --> B.bind(A)
  * */
 ModelPrototype.bind = function(target, callback){
+<<<<<<< HEAD
     this.getBinding(target).binding.callback = callback;
+=======
+    this.getBinding(target).callback = callback;
+>>>>>>> 6dba0261702096ee48a45e977b95d66e1ab4bcc2
 }
 /*
  * =Model.prototype.unbind
  * @about   remove from model.bindings
  * */
+<<<<<<< HEAD
 ModelPrototype.unbind   = function(target){
     var model   = this
         ,index  = model.getBinding(target).index
         ;
     if(index >= 0) model.bindings.splice(index, 1);
+=======
+ModelPrototype.unbind   = function(){
+
+>>>>>>> 6dba0261702096ee48a45e977b95d66e1ab4bcc2
 }
 /*
  * =Bindings
@@ -1335,6 +1393,7 @@ NodeBind.walkTree   = function(node, callback) {
 NodeBind.setTreeScope   = function(node, scope){
     if(!scope) return
     node.nbScope    = scope;
+<<<<<<< HEAD
     var currNode,k,len,nbViews,nbModels,nbView,nbModel,objProps,objPropsLen,objProp,bindings,directive;
     //walk all children
     NodeBind.walkTree( node, function(depth){
@@ -1375,6 +1434,36 @@ NodeBind.setTreeScope   = function(node, scope){
             for(k in nbViews)
                 nbViews[k].render();
     })
+=======
+    var currNode,k,nbViews,nbModels,nbView,objProps,objPropsLen,objProp,nbModel;
+
+    //walk all children
+    NodeBind.walkTree( node, function(depth){
+        currNode    = this;
+        if(nbViews = currNode.nbViews){
+            //clean all models
+            nbModels = currNode.nbModels = [];//memory clean todo
+            for(k in nbViews){
+                nbView      = nbViews[k];
+                //todo repeat scope view
+                //clean view bindings
+                objProps    = nbView.getObjectProperty();
+                objPropsLen = objProps.length;
+                while(objPropsLen--){
+                    objProp     = objProps[objPropsLen];
+                    //create new model
+                    nbModel   = new Model(objProp.object, objProp.property)
+                    nbModels.push(nbModel);
+                    //two way bind
+                    nbView.bind(nbModel, nbModel.update);
+                    nbModel.bind(nbView, nbView.render);
+                }
+                //render
+                nbView.render();
+            }
+        }
+    });
+>>>>>>> 6dba0261702096ee48a45e977b95d66e1ab4bcc2
 }
 //NodeBind.bindings   = new Bindings;
 //NodeBind.utility    = utility;
