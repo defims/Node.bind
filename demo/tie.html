@@ -1,0 +1,38 @@
+<!doctype html>
+<head>
+    <script src="../src/tie.js"></script>
+</head>
+<body>
+    <!--
+    {{data.path.to.obj.key}} and {{data.path.to.obj.key}}
+    <div class="origin"
+        data-bind-attribute-class="{{data.path.to.obj.key}} and {{data.path.to.obj.key}}" >
+    </div>
+    <div
+        data-bind-attribute-class="{{data.path.to.obj.key}} and {{data.path.to.obj.key}}" >
+        {{data.path.to.obj.key}}
+    </div>
+    <div
+        data-bind-scope="{{data.path.to.obj}}" >
+        <div>
+            <div data-bind-attribute-class="class{{key}}">{{key}}</div>
+        </div>
+    </div>
+    -->
+    <div data-bind-repeat="{{array}}">
+        {{$index}}
+    </div>
+<script>
+    data = {
+        path : {
+            to : {
+                obj : {
+                    key : "value"
+                }
+            }
+        }
+    }
+    array = [1]
+</script>
+</body>
+</html>
