@@ -249,35 +249,7 @@ function Path(path){
 ////console.log(new Path("path.to.value.<5.value")) //todo
 //console.log(new Path("<1.path.to.value.value"))
 //console.log(new Path("/.path.to.value.value"))
-function get$Index(view) {
-    //while( !(node instanceof TieScopeView) ) {
-    //    forEach(node.contacts.values ,function (contact ,index ,contacts) {
-    //        var parent = false
-    //        forEach(contact.as ,function (item) {
-    //            if(item == "parent") {
-    //                parent = true
-    //            }
-    //        })
-    //        if ( parent ) node = contact.node
-    //    })
-    //}
-    //var scopeView = view
-    //while(!(scopeView instanceof TieScopeView)) {
-    //    scopeView = scopeView.contacts.get("parent")[0].node;
-    //}
-    scopeView = view.contacts.get("parent")[0].node;
-    console.log("scopeView:", scopeView)
-    if("instances" in scopeView) {
-        console.log("instances")
-        return 0;
-    }
-    else if("prototype" in scopeView){
-        //var instances = scopeView.prototype.instances;
-        console.log("instance", scopeView)
-        return 1
-    }
-    return 0;
-}
+
 function generateViews(node) {
     walkTree(node, function(depth){
         var node = this
@@ -359,20 +331,6 @@ function generateViews(node) {
 function removeViews(node) {
 
 }
-function generatePaths (template, pathTree) {
-    var paths = []
-    parseTemplate(
-        template
-        ,function(path){
-            //todo path.to.data path[to][data] path['to']["data"]
-            paths.push
-            return path.split(/\./gim)
-        }
-        ,function(path){
-            return path
-        }
-    );
-}
 function generateModel (template ,scopeModel) {
     var template = parseTemplate(
             template
@@ -391,7 +349,6 @@ function generateModel (template ,scopeModel) {
     while(tplLen--){
         path = template[tplLen];
         if(isArray(path)){
-            console.log(path.join())
             var arrayIndex = []
                 ,view ,model ,childPath
                 ;
@@ -403,27 +360,29 @@ function generateModel (template ,scopeModel) {
             if (arrayIndex.length > 0) {
                 var len = scopeModel.value.length;
                     ;
+                console.log(len)
                 while(len--) {
                     forEach(arrayIndex ,function (item) {
                         path[item] = len;
                     })
                     //model
-                    model = new TieModel(scopeModel.value ,path[0]);
-                    //console.log(model)
-                    model.contacts.add(scopeModel,"parent")
-                    scopeModel.contacts.add(model,"child")
+                    model = new TieModel(scopeModel.value ,path[0], scopeModel);
+                    //todo if model exist, contacts duplicate
+                    //model.contacts.add(scopeModel,"parent")
+                    //scopeModel.contacts.add(model,"child")
                     childPath = ArrayClone(path);
                     childPath.shift();
-                    model = model.getChildModel(childPath);
+                    console.log(childPath)
+                    model = model.getChildModel(childPath);//todo childpath has $index
                     models.push(model)
                 }
             }
             else {
                 //model
-                model = new TieModel(scopeModel.value ,path[0]);
+                model = new TieModel(scopeModel.value ,path[0] ,scopeModel);
                 //console.log(model)
-                model.contacts.add(scopeModel,"parent")
-                scopeModel.contacts.add(model,"child")
+                //model.contacts.add(scopeModel,"parent")
+                //scopeModel.contacts.add(model,"child")
                 childPath = ArrayClone(path);
                 childPath.shift();
                 model = model.getChildModel(childPath);
@@ -433,8 +392,8 @@ function generateModel (template ,scopeModel) {
     }
     return models
 }
-function generateModels(node ,rootModel) {
-    var scopeModels = [rootModel]
+function generateModels(node) {
+    var scopeModels = [new TieModel(window, "tieRootModel")]//init with root model
         ,scopeDepths = [-1]
         ,noticeModels = []
         ,pathTree = {}
@@ -449,6 +408,7 @@ function generateModels(node ,rootModel) {
             scopeModels.pop();
             scopeDepths.pop();
         }
+
         if(nodeType == ELEMENT_NODE){
             var attributes  = node.attributes
                 ,len = attributes.length
@@ -460,13 +420,16 @@ function generateModels(node ,rootModel) {
                 if(nodeName.match(/data-bind-(.*)/gim)){
                     var directive = RegExp.$1.split(/-/gim)
                         ;
-                    forEach(generatePaths(
+
+                    forEach(generateModel(
                         attribute.nodeValue
-                    ),function(path){
-                        paths.push(path);
+                        ,scopeModels[scopeModels.length - 1]
+                    ),function(model){
+                        noticeModels.push(model);
                     })
                     if (directive[0] == "scope" || directive[0] == "repeat") {
-                        scopeModels.push(noticeModels[0]);//todo scope is not child of window
+                        //if has scope model parse path tree model immediately
+                        scopeModels.push(noticeModels[noticeModels.length - 1]);//the newest model
                         scopeDepths.push(depth);
                     }
                 }
@@ -474,17 +437,18 @@ function generateModels(node ,rootModel) {
         }else if(nodeType == TEXT_NODE){
             var nodeValue = node.nodeValue;
             if(nodeValue.match(/\{\{.*\}\}/gim)) {
-                //forEach(generateModel(
-                //    node.nodeValue
-                //    ,scopeModels[scopeModels.length - 1]
-                //),function(model){
-                //    noticeModels.push(model);
-                //})
+                forEach(generateModel(
+                    node.nodeValue
+                    ,scopeModels[scopeModels.length - 1]
+                ),function(model){
+                    noticeModels.push(model);
+                })
             }
         }
     })
     console.log(noticeModels,"\n")
-    ////first time notice
+    //console.log(scopeModels,"\n")
+    //first time notice
     //forEach(noticeModels ,function(model){
     //    console.log("%c\n== first time notice","color:hsla(0,70%,50%,1);",model.constructor.name ,model ,model.key)
     //    model.receive(model.value ,"binding");
@@ -820,8 +784,8 @@ TieNodePrototype.receive = function(message, as, key, path, from){
         ,cycle = false
         ;
     //console.log(this,'\n', this.key, "receive:", key, path, "as", as)
-    console.log("%c<- " + this.constructor.name + " " + this.key.join(".") , "color:hsla(10,50%,50%,1); background: hsla(120,50%,60%,.1);" ,"receive as" ,as)
-    console.log("   with" ,{ this: this, message: message ,key: key ,path: path })
+    console.log("%c-> " + this.constructor.name + " " + this.key.join(".") , "color:hsla(10,50%,50%,1); background: hsla(120,50%,60%,.1);" ,"receive as" ,as)
+    //console.log("   with" ,{ this: this, message: message ,key: key ,path: path })
 
     //check circle
     while(pathLen--)
@@ -863,8 +827,8 @@ TieNodePrototype.send = function(message, key, path, to){
         ;
     if(key){//if key is wrong, stop
         path.push(that);
-        console.log("%c-> " + this.constructor.name + " " + this.key.join(".") , "color:hsla(120,40%,45%,1); background: hsla(0,50%,60%,.1);" ,"send to" ,as )
-        console.log("   with" ,{ message: message ,to: to.node ,key: key ,path: path })
+        console.log("%c<- " + this.constructor.name + " " + this.key.join(".") , "color:hsla(120,40%,45%,1); background: hsla(0,50%,60%,.1);" ,"send to" ,as )
+        //console.log("   with" ,{ message: message ,to: to.node ,key: key ,path: path })
         //console.log(this,'\n', this.key, "send   :", key, path, "to",  to.node.key)
         node.receive.call(node, message, as, key, path, that);
     }
@@ -901,7 +865,7 @@ TieNodePrototype.update = function(value){
  * =Model
  */
 var TieModels = new TieMap;
-function TieModel(object, property){
+function TieModel(object ,property ,parentModel){
     var value = object[property]
         ,model = TieModels.get({object: object, property: property})
         ;
@@ -913,15 +877,20 @@ function TieModel(object, property){
             ,value
             ,TieModels
         )
-        //set property
+        //build contacts
+        if(parentModel) {
+            parentModel.contacts.add(model, "child");
+            model.contacts.add(parentModel, "parent");
+        }
+        model.watch();
         //todo multi property description
         model.set(value);
         //notice itself report
         //if report in Model constructor, parent-child relationship is still unestablished
-        //console.log('\nexcute report '+property+' : \n')
-        //node.excute("report",object[property]);
-        model.watch();
+        console.log('\n%c== model set:' ,"color: hsla(0,70%,50%,1)",object ,property)
+        model.receive(object[property]);
     }
+
     return model
 }
 extend(TieModel, TieNode);
@@ -944,14 +913,14 @@ TieModelPrototype.watch = function(){
             console.log("set")
             model.value = value;
             model.set(value);
-            console.log('\nmodel receive with nothing: \n')
+            console.log('\n%c== model set:' ,"color: hsla(0,70%,50%,1)" ,model ,value)
             model.receive(value);
         }
     });
 }
 ////test
 //var o = {p: {p1: {p2: "p2v"}}}
-//var ma = new Model(o, "p");
+//var ma = new TieModel(o, "p");
 //console.log(ma)
 /*
  * =TieModel set
@@ -967,17 +936,16 @@ TieModelPrototype.set = function(object){
         for(key in object){
             //model.setProperty(key, object[key]);
             //build parent child relationship
-            childModel = new TieModel(object, key);
-            model.contacts.add(childModel, "child");
-            childModel.contacts.add(model, "parent");
+            childModel = new TieModel(object, key ,model);
+            //model.contacts.add(childModel, "child");
+            //childModel.contacts.add(model, "parent");
             //copy exist relationship
 
             //if report in Model constructor, parent-child relationship is still unestablished, so report after estableish parent-child relationship again
-            console.log('\n%c== model set:' ,"color: hsla(0,70%,50%,1)",object ,key)
-            childModel.receive(object[key]);
+            //console.log('\n%c== model set:' ,"color: hsla(0,70%,50%,1)",object ,key)
+            //childModel.receive(object[key]);
         }
     }
-    //
 }
 /*
  * =TieModel setProperty
@@ -1016,40 +984,40 @@ TieModelPrototype.getChildModel = function(path){
     }
     return model
 }
-//test
+////test
 //var a = {p: {p1: {p2: "p2v"}}}
-//    ,ma = new TieModel(a, "p")
 //    ,mb = new TieModel({_p:1},"_p")
+//    ,ma = new TieModel(a ,"p" ,mb)
 //    ;
 //console.log(a);
 //console.log(ma);
-//window.testData = {
-//    path : {
-//        to : {
-//            obj : {
-//                key : "value"
-//            }
-//        }
-//    }
-//}
-//var mdata = new TieModel(window, "testData")
-//console.log(mdata)
-//console.log(mdata.getChildModel(["path","to","obj","key"]))
-//console.log(new TieModel(window, "test"))
+////window.testData = {
+////    path : {
+////        to : {
+////            obj : {
+////                key : "value"
+////            }
+////        }
+////    }
+////}
+////var mdata = new TieModel(window, "testData")
+////console.log(mdata)
+////console.log(mdata.getChildModel(["path","to","obj","key"]))
+////console.log(new TieModel(window, "test"))
 //console.log("\n\rmodify p2v:\n\r")
 //a.p.p1.p2 = "modify p2v"
-//tips: never bind contact to a child node, whose parent can be modify
-//ma.contacts.get(["p1"]).node.contacts.add(mb, "binding")
-//console.log("\n\rmodify p1v:\n\r")
-//a.p.p1 = {p2: "modify p1v p2v"}
-//console.log("\n\rcontinue modify p2v:\n\r")
-//a.p.p1.p2 = "continue modify p2v"
-//console.log("\n\rma update:\n\r")
-//ma.update("new value")
-//testArray = [9,3];
-//var m = new TieModel(window, "testArray");
-//console.log(m);
-//m.receive("message" ,"binding" ,["$index"] );
+////tips: never bind contact to a child node, whose parent can be modify
+////ma.contacts.get(["p1"]).node.contacts.add(mb, "binding")
+////console.log("\n\rmodify p1v:\n\r")
+////a.p.p1 = {p2: "modify p1v p2v"}
+////console.log("\n\rcontinue modify p2v:\n\r")
+////a.p.p1.p2 = "continue modify p2v"
+////console.log("\n\rma update:\n\r")
+////ma.update("new value")
+////testArray = [9,3];
+////var m = new TieModel(window, "testArray");
+////console.log(m);
+////m.receive("message" ,"binding" ,["$index"] );
 /*
  * =test
  */
@@ -1343,7 +1311,7 @@ TieViewPrototype.send = function(message, receivekey, path, to){
             has$index = true;
         }
     })
-
+    //console.log("view send")
     TieView.superClass.send.apply(that,arguments);
     //restore view.key
     if (has$index) view.key = originKey;
@@ -1378,10 +1346,10 @@ function TieScopeView(
             ,value || ""
             ,views || TieScopeViews
         )
-        ,contacts = that.contacts
+        ,contacts = new TieContacts//that.contacts
         ;
     //delete that.contacts; //use TieScopeView.prototype.contacts, get from dom tree
-    //getter setter chain
+    //overwrite contacts
     Object.defineProperty(that, "contacts", {
         get : function(){
             var scopeView = this
@@ -1389,8 +1357,23 @@ function TieScopeView(
                 ,element = target.node
                 ,parent = element.parentElement
                 ,childNodes = element.childNodes
+                ,parentScopeViews
+                ,parentRepeatViews
                 ;
-
+            //get parent scope view
+            while(parent
+                && !(parentScopeViews = TieScopeViews.get({node: parent}))
+                && !(parentRepeatViews = TieRepeatViews.get({node: parent}))
+            ) {
+                parent = parent.parentElement
+            }
+            contacts.remove("parent");
+            if(parentRepeatViews) {
+                contacts.add(parentRepeatViews, "parent");
+            }
+            else if ( parentScopeViews ) {
+                contacts.add(parentScopeViews, "parent");
+            }
             //get childNodes scope view
             //todo need faster
             contacts.remove("child");
@@ -1739,7 +1722,14 @@ setTimeout(function(){
     rootView.contacts.add(rootModel,"binding")
     //console.log(rootModel, rootView)
     generateViews(document.body);
-    generateModels(document.body ,rootModel);
+    generateModels(document.body);
+    ////model
+    //model = new TieModel(window,"array");
+    ////console.log(model)
+    //model.contacts.add(rootModel,"parent")
+    //rootModel.contacts.add(model,"child")
+    ////model = model.getChildModel([0,1]);
+    ////model.receive(model.value ,"binding");
     console.log(rootView)
     console.log(rootModel)
 })

@@ -21,6 +21,7 @@
     -->
     <div data-bind-repeat="{{array}}">
         <div data-bind-repeat="{{$index}}">
+            {{$index}}
         </div>
     </div>
 <script>
@@ -33,7 +34,7 @@
             }
         }
     }
-    array = [[1] ,[1]]
+    array = [1]
 </script>
 </body>
 </html>
