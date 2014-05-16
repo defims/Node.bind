@@ -1,4 +1,40 @@
 ;(function(document, window, undefined){
+    /*
+     * Copyright 2012 The Polymer Authors. All rights reserved.
+     * Use of this source code is governed by a BSD-style
+     * license that can be found in the LICENSE file.
+     */
+
+    if (typeof WeakMap === 'undefined') {
+      (function() {
+        var defineProperty = Object.defineProperty;
+        var counter = Date.now() % 1e9;
+
+        var WeakMap = function() {
+          this.name = '__st' + (Math.random() * 1e9 >>> 0) + (counter++ + '__');
+        };
+
+        WeakMap.prototype = {
+          set: function(key, value) {
+            var entry = key[this.name];
+            if (entry && entry[0] === key)
+              entry[1] = value;
+            else
+              defineProperty(key, this.name, {value: [key, value], writable: true});
+          },
+          get: function(key) {
+            var entry;
+            return (entry = key[this.name]) && entry[0] === key ?
+                entry[1] : undefined;
+          },
+          delete: function(key) {
+            this.set(key, undefined);
+          }
+        };
+
+        window.WeakMap = WeakMap;
+      })();
+    }
     // object.watch
     function watch(object ,prop, handler) {
         var
@@ -43,6 +79,50 @@
         for(var i = 0, len = array.length; i < len; ++i) {
             fn(array[i], i, array)
         }
+    }
+    function walkDOM(node, func) {
+        func(node);
+        node = node.firstChild;
+        while (node) {
+            walkDOM(node, func);
+            node = node.nextSibling;
+        }
+    }
+    function walkObject(o, func ,propertyPath ,valuePath) {
+        propertyPath = propertyPath || [];
+        valuePath = valuePath || [];
+        valuePath.push(o);
+        for (var i in o) {
+            var newPropertyPath = propertyPath.length > 0 ? propertyPath.join("*").split("*") : propertyPath;
+            newPropertyPath.push(i);
+            func(o ,i ,newPropertyPath);
+            if (o[i] !== null && typeof(o[i]) == "object") {
+                var find = false
+                    ;
+                forEach(valuePath ,function(item) {
+                    if(item === o[i]) {
+                        find = true;
+                    }
+                })
+                if(!find) walkObject(o[i],func,newPropertyPath ,valuePath);
+            }
+        }
+    }
+    function find(object ,paths) {
+        var len = paths.length - 1
+            ,ret = {property: paths[len]}
+            ,i,path
+            ;
+        for (i = 0; i < len; ++i) {
+            path = paths[i]
+            if (path in object) {
+                object = object[path]
+            } else {
+                return
+            }
+        }
+        ret.object = object;
+        return ret
     }
     function Model(object ,property) {
         var that = this
@@ -93,51 +173,27 @@
             ;
         fn.object[fn.property](that.node ,value ,that.index)
     }
-    function walkDOM(node, func) {
-        func(node);
-        node = node.firstChild;
-        while (node) {
-            walkDOM(node, func);
-            node = node.nextSibling;
-        }
+    function Template(directive ,node) {
+        
     }
-    function walkObject(o, func ,propertyPath ,valuePath) {
-        propertyPath = propertyPath || [];
-        valuePath = valuePath || [];
-        valuePath.push(o);
-        for (var i in o) {
-            var newPropertyPath = propertyPath.length > 0 ? propertyPath.join("*").split("*") : propertyPath;
-            newPropertyPath.push(i);
-            func(o ,i ,newPropertyPath);
-            if (o[i] !== null && typeof(o[i]) == "object") {
-                var find = false
-                    ;
-                forEach(valuePath ,function(item) {
-                    if(item === o[i]) {
-                        find = true;
-                    }
-                })
-                if(!find) walkObject(o[i],func,newPropertyPath ,valuePath);
-            }
-        }
+    var nodes = new WeakMap;
+    function createView(node ,directive ,template ,views) {
+        views = views || {};
+        var view = {a:1};
+        var parsedTpl = template.replace(/{{([\w\.]+)}}/gim, function(match ,path ,index) {
+            console.log(arguments)
+            var view = views[path] = views[path] || [];
+            view.push(new View);
+            console.log(views)
+        })
+        nodes.set(node, view);
+        console.log(arguments);
+        console.log(nodes);
     }
-    function find(object ,paths) {
-        var len = paths.length - 1
-            ,ret = {property: paths[len]}
-            ,i,path
-            ;
-        for (i = 0; i < len; ++i) {
-            path = paths[i]
-            if (path in object) {
-                object = object[path]
-            } else {
-                return
-            }
-        }
-        ret.object = object;
-        return ret
+    function createModel(node ,directive ,template ,views) {
     }
-    function generateView(node ,directive ,template ,views) {
+    /*
+    function createView(node ,directive ,template ,views) {
         if(!template.match(/{{.*?}}/gim)) return
         //store initial value
         var tieValues = node.tieValues = node.tieValues || {}
@@ -185,7 +241,9 @@
             }
         })
     }
+    */
     function tie(node ,scope) {//simple dom template without repeat directive
+        //retie need garbage recycle
         var views = {}
             ,models = {}
             ;
@@ -197,19 +255,20 @@
                 forEach(attributes ,function(attribute) {
                     if(attribute.nodeName.match(/data-bind-(.*)/gim)) {
                         var directive = RegExp.$1.split(/-/gim)
-                        generateView(node ,directive ,attribute.nodeValue ,views);
+                        createView(node ,directive ,attribute.nodeValue ,views);
                         //todo view change update model
                     }
                 })
             }
             else if (node.nodeType === 3) {
-                generateView(node ,["textcontent"] ,node.nodeValue ,views);
+                createView(node ,["textcontent"] ,node.nodeValue ,views);
                 //todo view change update model
             }
         });
 
         //models
         if(scope) walkObject(scope ,function(object ,property ,path) {
+            return
             console.log(object ,property ,path)
             var token = path.join(".");
             models[token] = new Model(object ,property);
@@ -227,7 +286,6 @@
 
         return {views: views ,models: models}
     }
-
     window.tie = tie;
 
 })(document, window)

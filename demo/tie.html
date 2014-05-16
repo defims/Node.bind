@@ -25,7 +25,7 @@
     </div>
     -->
     <div class="repeat"
-        data-bind-repeat="{{array}}">
+        data-bind-repeat="{{array}}is {{array}}">
         {{.}}
     </div>
     <!--
@@ -47,6 +47,20 @@
     array = [1,2];
     //console.log(tie(document.querySelector('div'), data))
     console.log(tie(document.querySelector('.repeat'), array))
+</script>
+<script>
+    setTimeout(function() {
+        console.log(a)
+    })
+</script>
+<script>
+    console.log(a)
+</script>
+<script>
+    var a = 10;
+</script>
+<script>
+    console.log(a)
 </script>
 </body>
 </html>
