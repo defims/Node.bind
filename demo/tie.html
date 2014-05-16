@@ -18,12 +18,22 @@
             <div data-bind-attribute-class="class{{key}}">{{key}}</div>
         </div>
     </div>
-    -->
     <div data-bind-repeat="{{array}}">
         <div data-bind-repeat="{{$index}}">
             {{$index}}
         </div>
     </div>
+    -->
+    <div class="repeat"
+        data-bind-repeat="{{array}}">
+        {{.}}
+    </div>
+    <!--
+    <div
+        data-bind-attribute-class="{{path.to}} and {{path.to.obj.key}}"
+        data-bind-textcontent="{{path.to}} and {{path.to.obj.key}}">
+    </div>
+    -->
 <script>
     data = {
         path : {
@@ -34,7 +44,9 @@
             }
         }
     }
-    array = [1]
+    array = [1,2];
+    //console.log(tie(document.querySelector('div'), data))
+    console.log(tie(document.querySelector('.repeat'), array))
 </script>
 </body>
 </html>
