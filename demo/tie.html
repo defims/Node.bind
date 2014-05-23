@@ -24,9 +24,12 @@
         </div>
     </div>
     -->
-    <div class="repeat"
-        data-bind-repeat="{{array}}is {{array}}">
-        {{.}}
+    <div class="parent" data-tie-repeat="{{deep.array}}">
+        <div class="child" data-tie-repeat="{{$$index}}">
+            <div class="grandChild" data-tie-repeat="{{$$index}}">
+                {{$$index}}
+            </div>
+        </div>
     </div>
     <!--
     <div
@@ -36,31 +39,12 @@
     -->
 <script>
     data = {
-        path : {
-            to : {
-                obj : {
-                    key : "value"
-                }
-            }
+        deep: {
+            array: [[[1,2],[3]]]
         }
     }
-    array = [1,2];
     //console.log(tie(document.querySelector('div'), data))
-    console.log(tie(document.querySelector('.repeat'), array))
-</script>
-<script>
-    setTimeout(function() {
-        console.log(a)
-    })
-</script>
-<script>
-    console.log(a)
-</script>
-<script>
-    var a = 10;
-</script>
-<script>
-    console.log(a)
+    console.log(tie(document.querySelector('.parent'), data))
 </script>
 </body>
 </html>

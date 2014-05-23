@@ -349,3 +349,51 @@ node data store in dom with nb prefix like:
 * Object.observe as listener
 * event callback scope modify support
 * directly view modify support
+
+##binding can be store
+
+###tie tree:
+
+    {
+        key: {
+            to: {
+                value: {
+                    __tie__: {//key.to.value.tieBinding
+                        "directive": "UID"
+                        ,"directive.a": "UID"
+                        ,"directive.b": "UID"
+                        ,"directive.c": "UID"
+                    }
+                }
+                ,__tie__: {//key.to.tieBinding
+                    "directive": "UID"
+                    ,"directive.a": "UID"
+                    ,"directive.b": "UID"
+                    ,"directive.c": "UID"
+                }
+            }
+            ,__tie__: {//key.tieBinding
+                "directive": "UID"
+                ,"directive.a": "UID"
+                ,"directive.b": "UID"
+                ,"directive.c": "UID"
+            }
+        }
+    }
+
+###get node
+
+querySelector("[data-tie-uid="+UID+"]")
+
+###store steps
+
+* store tie tree with JSON.stringify
+* store model object with JSON.stringify
+* store dom tree with outerHTML
+
+###restore steps
+
+* get tieTree with JSON.parse
+* get rootObject with JSON.parse
+* insert rootNode into parentNode with outerHTML
+* tie(rootNode ,rootObject ,tieTree)

@@ -1,4 +1,5 @@
 ;(function(document, window, undefined){
+
     /*
      * Copyright 2012 The Polymer Authors. All rights reserved.
      * Use of this source code is governed by a BSD-style
@@ -35,6 +36,16 @@
         window.WeakMap = WeakMap;
       })();
     }
+
+    function extend(subClass, superClass) {
+        var F = function() {};
+        F.prototype = superClass.prototype;
+        subClass.prototype = new F();
+        subClass.prototype.constructor = subClass;
+        subClass.superClass = superClass.prototype;
+        if(superClass.prototype.constructor == Object.prototype.constructor)
+            superClass.prototype.constructor = superClass;
+    }
     // object.watch
     function watch(object ,prop, handler) {
         var
@@ -64,6 +75,9 @@
     //})
     //obj.p = 2
     //console.log(obj)
+    function cloneArray(array) {
+        return array.length >0 ? array.join("*").split("*") : []
+    }
     function unwatch(object ,prop) {
         var val = object[prop];
         delete object[prop]; // remove accessors
@@ -76,39 +90,98 @@
       return Object.prototype.toString.call(o) === '[object Object]';
     }
     function forEach(array, fn){
-        for(var i = 0, len = array.length; i < len; ++i) {
-            fn(array[i], i, array)
+        if(array && array.length) {
+            for(var i = 0, len = array.length; i < len; ++i) {
+                if(fn) fn(array[i], i, array)
+            }
         }
     }
-    function walkDOM(node, func) {
-        func(node);
+    function walkDOM(node, func ,depth) {
+        depth = depth || 0;
+        func(node ,depth);
         node = node.firstChild;
         while (node) {
-            walkDOM(node, func);
+            walkDOM(node, func ,depth++);
             node = node.nextSibling;
         }
     }
-    function walkObject(o, func ,propertyPath ,valuePath) {
+    /*!
+     * Small Walker - v0.1.1 - 5/5/2011
+     * http://benalman.com/
+     * 
+     * Copyright (c) 2011 "Cowboy" Ben Alman
+     * Dual licensed under the MIT and GPL licenses.
+     * http://benalman.com/about/license/
+     */
+     
+    // Walk the DOM, depth-first (HTML order). Inside the callback, `this` is the
+    // element, and the only argument passed is the current depth. If the callback
+    // returns false, its children will be skipped.
+    // 
+    // Based on https://gist.github.com/240274
+     
+    function walkDOM(node, callback) {
+      var skip, tmp;
+      // This depth value will be incremented as the depth increases and
+      // decremented as the depth decreases. The depth of the initial node is 0.
+      var depth = 0;
+     
+      // Always start with the initial element.
+      do {
+        if ( !skip ) {
+          // Call the passed callback in the context of node, passing in the
+          // current depth as the only argument. If the callback returns false,
+          // don't process any of the current node's children.
+          skip = callback(node, depth) === false;
+        }
+     
+        if ( !skip && (tmp = node.firstChild) ) {
+          // If not skipping, get the first child. If there is a first child,
+          // increment the depth since traversing downwards.
+          depth++;
+        } else if ( tmp = node.nextSibling ) {
+          // If skipping or there is no first child, get the next sibling. If
+          // there is a next sibling, reset the skip flag.
+          skip = false;
+        } else {
+          // Skipped or no first child and no next sibling, so traverse upwards,
+          tmp = node.parentNode;
+          // and decrement the depth.
+          depth--;
+          // Enable skipping, so that in the next loop iteration, the children of
+          // the now-current node (parent node) aren't processed again.
+          skip = true;
+        }
+     
+        // Instead of setting node explicitly in each conditional block, use the
+        // tmp var and set it here.
+        node = tmp;
+     
+      // Stop if depth comes back to 0 (or goes below zero, in conditions where
+      // the passed node has neither children nore next siblings).
+      } while ( depth > 0 );
+    }
+    function walkObject(o, func ,propertyPath ,objectPath) {
         propertyPath = propertyPath || [];
-        valuePath = valuePath || [];
-        valuePath.push(o);
+        objectPath = objectPath || [];
+        objectPath.push(o);
         for (var i in o) {
-            var newPropertyPath = propertyPath.length > 0 ? propertyPath.join("*").split("*") : propertyPath;
+            var newPropertyPath = cloneArray(propertyPath);
             newPropertyPath.push(i);
             func(o ,i ,newPropertyPath);
             if (o[i] !== null && typeof(o[i]) == "object") {
                 var find = false
                     ;
-                forEach(valuePath ,function(item) {
+                forEach(objectPath ,function(item) {
                     if(item === o[i]) {
                         find = true;
                     }
                 })
-                if(!find) walkObject(o[i],func,newPropertyPath ,valuePath);
+                if(!find) walkObject(o[i] ,func ,newPropertyPath ,objectPath);
             }
         }
     }
-    function find(object ,paths) {
+    function find(object ,paths ,create) {
         var len = paths.length - 1
             ,ret = {property: paths[len]}
             ,i,path
@@ -117,33 +190,325 @@
             path = paths[i]
             if (path in object) {
                 object = object[path]
-            } else {
+            }
+            else if(create) {
+                object = object[path] = {}
+            }
+            else {
                 return
             }
         }
         ret.object = object;
         return ret
     }
-    function Model(object ,property) {
-        var that = this
+    function bind(binding ,path ,target ,index) {
+        var current = binding
+            ,defineProperty = Object.defineProperty
+            ,_binding
+            //,parent
             ;
-        that.object = object || {};
-        that.property = property || "";
+        forEach(path ,function(item) {
+            //parent = current;
+            current = current[item] = current[item] || {}
+            //if(!current.parent){
+            //    defineProperty(current, "parent" ,{
+            //        enumerable: false
+            //        ,configurable: false
+            //        ,writable: true
+            //        ,value: parent
+            //    })
+            //}
+        })
+        _binding = current.binding;
+        if(!_binding){
+            _binding = [];
+            defineProperty(current, "binding" ,{
+                enumerable: false
+                ,configurable: false
+                ,writable: true
+                ,value: _binding
+            })
+        }
+        current.binding.push({index: index,target: target});
+
+        defineProperty(target ,"binding" ,{
+             enumerable: false
+            ,configurable: false
+            ,writable: true
+            ,value: _binding
+        })
     }
-    Model.prototype.update = function(value) {
-        var that = this
+    function parsePath(str) {
+        var path;
+        if(str.charAt(0) == '.') {//.path.to.value
+            str = str.slice(1)
+        }
+        if(str == "") {//.
+            path = []
+        }
+        else {//path.to.value
+            path = str.split(/\./gim);
+        }
+        return path
+    }
+    function processPath(path ,$$index) {
+        forEach(path ,function(item ,index) {
+            if(item == "$$index") {
+                path[index] = $$index;
+            }
+        })
+    }
+    window.tie = function tie(node ,model ,tieTree) {
+        var tieNodeTree = !!tieTree;
+        if(!node || !model) return
+        tieTree = tieTree || {}
+
+        //tie.find(tieTree ,path ,function() {
+        //    
+        //} ,true)
+        var treeObject = tieTree;
+        tie.walkModel(model ,function(object ,property ,path) {
+            console.log(path)
+            tie.find(o)
+        })
+
+        if(tieNodeTree) {
+            //tie node and tieTree
+        }
+        return {node: node ,model: model ,tieTree: tieTree}
+        //retie need garbage recycle
+        //var rootBinding = new Binding
+        //    ;
+
+        //views
+        //tie.createViews(rootNode ,rootBinding);
+
+        //models
+        //tie.createModels(rootScope ,rootBinding);
+
+        //return rootBinding
+    }
+    tie.createTieTree = function(node ,model) {
+        
+    }
+    tie.walkModel = function(o ,callback ,propertyPath ,objectPath) {
+        propertyPath = propertyPath || [];
+        objectPath = objectPath || [];
+        objectPath.push(o);
+        for (var i in o) {
+            var newPropertyPath = cloneArray(propertyPath);
+            newPropertyPath.push(i);
+            callback(o ,i ,newPropertyPath);
+            if (o[i] !== null && typeof(o[i]) == "object") {
+                var find = false
+                    ;
+                forEach(objectPath ,function(item) {
+                    if(item === o[i]) {
+                        find = true;
+                    }
+                })
+                if(!find) walkObject(o[i] ,callback ,newPropertyPath ,objectPath);
+            }
+        }
+    }
+    tie.find = function(object ,paths ,create) {
+        var len = paths.length - 1
+            ,ret = {property: paths[len]}
+            ,i,path
             ;
-        that.object[that.property] = value;
+        for (i = 0; i < len; ++i) {
+            path = paths[i]
+            if (path in object) {
+                object = object[path]
+            }
+            else if(create) {
+                object = object[path] = {}
+            }
+            else {
+                return
+            }
+        }
+        ret.object = object;
+        return ret
     }
-    var handle = {}
-    handle.textcontent = function(node ,value ,index) {
-        var textcontent = node.tieValues.textcontent
-            ;
-        textcontent[index] = value;//.object[value.property];
-        node.textContent = textcontent.join("");
+    tie.createViews = function(scopeNode ,scopeBinding) {
+        function walk(node ,scopeBinding ,scopeElement ,$$index) {
+            var views = []
+                ,repeatView ,scopeView
+                ;
+            if (node.nodeType === 1) {
+                forEach(node.attributes ,function(attribute) {
+                    if(attribute.nodeName.match(/data-tie-(.*)/gim)) {
+                        var $1 = RegExp.$1;
+                        view = new View(node ,$1.split(/-/gim) ,attribute.nodeValue)
+                        if($1 == "scope") {
+                            scopeView = view;
+                        }
+                        else if($1 == "repeat") {
+                            repeatView = view;
+                        }
+                        else {
+                            views.push(view);
+                        }
+                    }
+                })
+            }
+            else if (node.nodeType === 3) {
+                var nodeValue = node.nodeValue;
+                if(nodeValue.match(/{{[\$\w\.]+}}/gim)) {
+                    views.push(new View(node ,["textcontent"] ,nodeValue));
+                }
+                //todo view change update model
+            }
+            if(repeatView) {
+                view.scopeElement = scopeElement;
+                view.scopeBinding = scopeBinding;
+                forEach(repeatView.template.paths ,function(path ,index) {
+                    if(path !== undefined) {
+                        processPath(path ,$$index);
+                        var objProp = find(scopeBinding ,path ,true)
+                            ,obj = objProp.object
+                            ,prop = objProp.property
+                            ,instances,prototype
+                            ;
+
+                        bind(scopeBinding ,path ,view ,index);
+
+                        scopeBinding = obj[prop] = obj[prop] || {};
+                        scopeElement = node;
+                        //find node $$index
+                        if((prototype = prototypeNodes.get(node))
+                            && (instances = repeatNodes.get(prototype))) {
+                            forEach(instances ,function(instance ,index) {
+                                if(instance == node) {
+                                    $$index = index + 1;
+                                }
+                            })
+                        }
+                        else {
+                            $$index = 0;
+                        }
+                    }
+                })
+            }
+
+            if(scopeView) {
+                view.scopeElement = scopeElement;
+                view.scopeBinding = scopeBinding;
+                forEach(scopeView.template.paths ,function(path ,index) {
+                    if(path !== undefined) {
+                        processPath(path ,$$index);
+                        var objProp = find(scopeBinding ,path ,true)
+                            ,obj = objProp.object
+                            ,prop = objProp.property
+                            ;
+
+                        bind(scopeBinding ,path ,view ,index);
+
+                        scopeBinding = obj[prop] = obj[prop] || {};
+                        scopeElement = node;
+                    }
+                })
+            }
+
+            forEach(views ,function(view){//todo view change update model
+                view.scopeElement = scopeElement;
+                view.scopeBinding = scopeBinding;
+                forEach(view.template.paths ,function(path ,index) {
+                    if(path !== undefined) {
+                        processPath(path ,$$index);
+                        bind(scopeBinding ,path ,view ,index);
+                    }
+                })
+            })
+
+            node = node.firstChild;
+            while(node) {
+                walk(node, scopeBinding ,scopeElement ,$$index);
+                node = node.nextSibling;
+            }
+        }
+        //todo tie element is not scope or repeat element
+        walk(scopeNode ,(scopeBinding || new Binding) ,null ,0);
+
+        return scopeBinding;
     }
-    handle.attribute = {};
-    handle.attribute.class = function(node ,value ,index) {
+    tie.createModels = function(object ,scopeBinding) {
+        function walk(o ,scopeBinding ,path) {
+            var i ,model;
+            path.push(o);
+            for (i in o) {
+                scopeBinding[i] = scopeBinding[i] || {};
+                model = new Model(object ,i);
+                //model.path = cloneArray(path);
+                bind(scopeBinding ,[i] ,model ,0);
+                function update(value) {
+                    //notice binding todo multiply path ,multi parent
+                    //like var a = {b: 1},c = {c:a},d = {d: a}
+                    forEach(model.binding ,function(binding) {
+                        if(binding !== model) {
+                            //console.log(binding ,value)
+                            binding.target.update(binding.index ,value);
+                        }
+                    })
+                }
+                watch(o ,i ,function(value) {
+                    if(model.value !== value) {
+                        if(typeof(value) == "object") {
+                            console.log(value)
+                            walk(value ,scopeBinding ,path);
+                            update(value);
+                        }
+                    }
+                });
+                update(o[i]);
+                //avoid circle like var a = {b:a};
+                if (o[i] !== null && typeof(o[i]) == "object") {
+                    var find = false
+                        ;
+                    forEach(path ,function(item) {
+                        if(item === o[i]) {
+                            find = true;
+                        }
+                    })
+                    if(!find) walk(o[i] ,scopeBinding[i] ,path);
+                }
+            }
+        }
+        walk(object ,(scopeBinding || new Binding) ,[]);
+        //if(rootObject) {
+        //    function update(value) {
+        //        //notice binding todo multiply path ,multi parent
+        //        //like var a = {b: 1},c = {c:a},d = {d: a}
+
+        //        if(model.value !== value) {
+        //            if(typeof(value) == "object") {
+        //                //createModels(value ,path ,objectPath);
+        //            }
+        //            //console.log(value ,path)
+        //            forEach(model.binding ,function(binding){
+        //                console.log(binding)
+        //                if(binding !== model) {
+        //                    binding.update(value);
+        //                }
+        //            })
+        //        }
+        //    }
+        //    walkObject(rootObject ,function(object ,property ,path) {
+        //        var model = new Model(object ,property);
+        //        bind(rootBinding ,path ,model);
+
+        //        watch(object ,property ,update);
+        //        //update(object[property]);
+        //    })
+        //}
+    }
+    tie.handle = {}
+    tie.handle.textcontent = function(view) {
+        view.node.textContent = view.value.join("");
+    }
+    tie.handle.attribute = {};
+    tie.handle.attribute.class = function(view) {
         var attributeClass = node.tieValues.attribute.class
             ,originAttribute = node.tieOrigins.attribute
             ;
@@ -157,135 +522,120 @@
             node.className = originAttribute.class + " " + attributeClass.join("");
         }
     }
-    handle.repeat = function(node ,value ,index) {
-        console.log(node)
-    }
-    function View(directive ,node ,index) {
-        var that = this
+    var repeatNodes = new WeakMap
+        ,prototypeNodes = new WeakMap
+        ;
+    tie.handle.repeat = function(view) {
+        var node = view.node
+            ,value = view.value[0]
+            ,instances = repeatNodes.get(node) || []
+            ,add = value.length - instances.length - 1
+            ,lastInstance = instances[instances.length - 1] || node
+            ,newNode,fragment,i
             ;
-        that.directive = directive || [];
-        that.node = node || null;
-        that.index = index || -1;
-    }
-    View.prototype.update = function(value) {
-        var that = this
-            ,fn = find(handle ,that.directive)
-            ;
-        fn.object[fn.property](that.node ,value ,that.index)
-    }
-    function Template(directive ,node) {
-        
-    }
-    var nodes = new WeakMap;
-    function createView(node ,directive ,template ,views) {
-        views = views || {};
-        var view = {a:1};
-        var parsedTpl = template.replace(/{{([\w\.]+)}}/gim, function(match ,path ,index) {
-            console.log(arguments)
-            var view = views[path] = views[path] || [];
-            view.push(new View);
-            console.log(views)
-        })
-        nodes.set(node, view);
-        console.log(arguments);
-        console.log(nodes);
-    }
-    function createModel(node ,directive ,template ,views) {
-    }
-    /*
-    function createView(node ,directive ,template ,views) {
-        if(!template.match(/{{.*?}}/gim)) return
-        //store initial value
-        var tieValues = node.tieValues = node.tieValues || {}
-            ,tieOrigins = node.tieOrigins = node.tieOrigins || {}
-            ,tieValue = tieValues
-            ,tieOrigin = tieOrigins
-            ,len = directive.length - 1
-            ,i = 0
-            ,item
-            ;
-        for (i=0 ;i<len ;++i) {
-            item = directive[i];
-            if(!(item in tieValue)) {
-                tieValue[item] = tieValue[item] || {}
-                tieOrigin[item] = tieOrigin[item] || {}
+        repeatNodes.set(node ,instances);
+        //walk and create new dom views
+        if(add > 0) {//append after
+            fragment = document.createDocumentFragment();
+            for(i = 1; i <= add; i++) {
+                newNode = node.cloneNode(true);
+                fragment.appendChild(newNode);
+                instances.push(newNode);
+                prototypeNodes.set(newNode ,node);
+                tie.createViews(newNode ,view.scopeBinding);
             }
-            tieValue = tieValue[item]
-            tieOrigin = tieOrigin[item]
+            lastInstance.parentElement.insertBefore(fragment ,lastInstance.nextSibling)
         }
-        tieValue = tieValue[directive[len]] =  tieValue[directive[len]] || [];
-        //render template
-        forEach(template.split(/({{.*?}})/gim), function(path ,index) {
-            if(path.match(/{{.*?}}/gim)) {
-                var token = path.slice(2,-2)
-                    ,path = token.split(/\./gim)
-                    ,view = views[token]
-                    ,fn = find(handle ,directive)
-                    ;
-                if(!view) view = views[token] = [];
-                var has = false
-                forEach(view, function(item) {
-                    if(item.directive.join(".") === directive.join(".")
-                        && item.node === node
-                        && item.index === index
-                    ){
-                        has = true;
-                    }
-                })
-                if(!has) {
-                    view.push(new View(directive ,node ,index))
-                }
-            }
-            else if(path !== ""){
-                tieValue[index] = path;
-            }
-        })
+        else {//remove exist
+        }
     }
-    */
-    function tie(node ,scope) {//simple dom template without repeat directive
-        //retie need garbage recycle
-        var views = {}
-            ,models = {}
+
+
+
+    function Template(str) {
+        var that = this
+            ,parsed = str.split(/({{[\$\w\.]+)}}/gim)
+            ,index = 0
             ;
-
-        //views
-        if(node) walkDOM(node, function (node) {
-            if (node.nodeType === 1) {
-                var attributes = node.attributes;
-                forEach(attributes ,function(attribute) {
-                    if(attribute.nodeName.match(/data-bind-(.*)/gim)) {
-                        var directive = RegExp.$1.split(/-/gim)
-                        createView(node ,directive ,attribute.nodeValue ,views);
-                        //todo view change update model
-                    }
-                })
+        that.paths = [];
+        that.strings = [];
+        forEach(parsed, function(item) {
+            if(item.charAt(0) == '{' && item.charAt(1) == '{') {
+                that.paths[index++] = parsePath(item.slice(2));
             }
-            else if (node.nodeType === 3) {
-                createView(node ,["textcontent"] ,node.nodeValue ,views);
-                //todo view change update model
+            else if(item.charAt(0)){
+                that.strings[index++] = item;
             }
-        });
-
-        //models
-        if(scope) walkObject(scope ,function(object ,property ,path) {
-            return
-            console.log(object ,property ,path)
-            var token = path.join(".");
-            models[token] = new Model(object ,property);
-            function update(value) {
-                var view = views[token];
-                if(view) {
-                    forEach(view ,function(item) {
-                        item.update(value)
-                    })
-                }
-            }
-            watch(object ,property ,update)
-            update(object[property])
         })
-
-        return {views: views ,models: models}
     }
-    window.tie = tie;
+    //Template.prototype.index = function(path) {
+    //    return index
+    //}
+    //console.log(new Template)
+    //use a weakmap to store value in node, avoid polute dom
+    var nodes = new WeakMap;
+    function View(node ,directive ,template ,scope) {
+        var that = this
+            ,current
+            ;
+        that.node = node;
+        that.directive = directive;
+        that.template = new Template(template);
+        that.value = [];
+        //init value with template string
+        forEach(that.template.strings ,function(item ,index) {
+            if(item !== "" && item !== undefined) {
+                that.value[index] = item
+            }
+        })
+        nodes.set(node, that);
+    }
+    View.prototype.update = function(index ,value) {
+        var that = this
+            ,fn = find(tie.handle ,that.directive)
+            ;
+        fn = fn.object[fn.property];
+        if(typeof(path) == "string") {
+            path = parsePath(path);
+        }
+        forEach(that.template.paths ,function(path) {
+            if(path) {
+                that.value[index] = value;
+            }
+        })
+        fn(that);
+    }
+    function Model(object ,property) {
+        var that = this
+            ;
+        that.object = object || {};
+        that.property = property || "";
+        that.value = object[property];
+    }
+    Model.prototype.update = function(path ,value ,rootBinding) {
+        return
+        //console.log("update" ,value)
+        var that = this
+            ;
+        if(that.value !== value) {
+            console.log("really update")
+            that.value = value;
+            that.object[that.property] = value;
+        }
+    }
+
+    function Binding() {}
+    Binding.prototype.update = function(path ,value) {
+        var that = this
+            ,node = find(that ,path)
+            ;
+        console.log(path)
+        if(node !== undefined && (node = node.object[node.property])){
+            forEach(node.binding ,function(binding) {
+                binding.update(path ,value)
+            })
+        }
+    }
+
 
 })(document, window)
